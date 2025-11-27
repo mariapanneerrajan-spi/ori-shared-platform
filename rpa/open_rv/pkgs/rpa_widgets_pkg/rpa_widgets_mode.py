@@ -27,6 +27,7 @@ from rpa.widgets.media_path_overlay.media_path_overlay import MediaPathOverlay
 from rpa.widgets.session_auto_saver.session_auto_saver import SessionAutoSaver
 from rpa.widgets.frame_editor.frame_editor import FrameEditor
 from rpa.widgets.help_menu.help_menu import HelpMenu
+from rpa.widgets.tablethelper.TabletHelper import TabletHelper
 # from rpa.widgets.playlist_creator.playlist_creator import PlaylistCreator
 
 from rpa.widgets.test_widgets.test_session_api import TestSessionApi
@@ -277,6 +278,7 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
         self.__session_manager_dock = None
         self.__session_assistant_dock = None
         self.__timeline_toolbar = None
+        self.__tablet_helper_toolbar = None
         self.__image_controller = None
         self.__annotation_dock = None
         self.__color_corrector_dock = None
@@ -301,6 +303,7 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
         self.__show_session_auto_saver(False)
         # self.__show_frame_editor(True)
         self.__show_test_session_api()
+        self.__show_tablet_helper()
 
         commands.writeSettings("rpa", "is_rpa_mode", True)
 
@@ -564,6 +567,19 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
                 self.__timeline_toolbar.set_visible(True)
             return
         self.__timeline_toolbar = TimelineController(self.__rpa, self.__main_window)
+
+    def __show_tablet_helper(self):
+        if not self.__is_init_done():
+            return
+        if self.__tablet_helper_toolbar:
+            if self.__tablet_helper_toolbar.isVisible():
+                self.__tablet_helper_toolbar.set_visible(False)
+            else:
+                self.__tablet_helper_toolbar.set_visible(True)
+            return
+        self.__tablet_helper_toolbar = TabletHelper(self.__rpa, self.__main_window)
+        # self.__main_window.addToolBar(QtCore.Qt.LeftToolBarArea, self.__tablet_helper_toolbar)
+        self.__tablet_helper_toolbar.set_visible(True)
 
     def _show_annotation(self, event):
         self.__show_annotation()
@@ -864,10 +880,6 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
         if self.__main_window and self.__rpa: return True
         elif self.__main_window and self.__rpa is None: return True
         return False
-
-    def __toggle_dock_visibility(self, dock):
-        if dock.isVisible(): dock.hide()
-        else: dock.show()
 
 
 def createMode():

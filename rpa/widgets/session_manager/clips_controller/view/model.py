@@ -1,9 +1,8 @@
 import json
 from typing import Union
-
 try:
     from PySide2 import QtCore, QtGui
-except ImportError:
+except:
     from PySide6 import QtCore, QtGui
 import rpa.widgets.session_manager.clips_controller.view.resources.resources
 from rpa.widgets.session_manager.clips_controller.view.thumbnail_loader import ThumbnailLoader
@@ -17,12 +16,43 @@ class ProxyModel(QtCore.QSortFilterProxyModel):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-    def lessThan(self, left_model_index, right_model_index):
+    def is_float(self, s:str):
         try:
-            out = left_model_index.data() > right_model_index.data()
-        except TypeError:
-            out = True
-        return out
+            float(s)
+            return True
+        except ValueError:
+            return False
+
+    def lessThan(self, left_model_index, right_model_index):
+        left_data = left_model_index.data()
+        right_data = right_model_index.data()
+
+        if left_data is None and right_data is None:
+            return False
+        if left_data is None:
+            return True
+        if right_data is None:
+            return False
+
+        if type(left_data) == type(right_data):
+            if isinstance(left_data, QtGui.QPixmap) or \
+                isinstance(right_data, QtGui.QPixmap):
+                return True
+            elif isinstance(left_data, str) and isinstance(right_data, str):
+                if self.is_float(left_data) and self.is_float(right_data):
+                    return float(left_data) > float(right_data)
+            else:
+                return left_data > right_data
+
+        try:
+            return float(left_data) > float(right_data)
+        except (ValueError, TypeError):
+            pass
+
+        try:
+            return str(left_data) > str(right_data)
+        except (ValueError, TypeError):
+            return True
 
 
 class DictList:
@@ -101,6 +131,7 @@ class Model(QtCore.QAbstractTableModel):
         attr = self.__attrs[index.column()]
         clip = self.__clips[index.row()]
         value = self.__session_api.get_attr_value(clip, attr)
+        is_tm = self.__session_api.get_custom_clip_attr(clip, "title_media")
 
         if attr == "thumbnail_url" and value != "Loading,...":
             def callback(thumbnail: Union[str, QtGui.QPixmap]):
@@ -110,7 +141,15 @@ class Model(QtCore.QAbstractTableModel):
                     self.dataChanged.emit(index, index, QtCore.Qt.DisplayRole)
                 if type(thumbnail) is QtGui.QPixmap:
                     self.dataChanged.emit(index, index, QtCore.Qt.DecorationRole)
-            thumbnail_pixmap = self.__thumbnail_loader.request_thumbnail(value, callback)
+            if is_tm:
+                _, tmp = self.__session_api.get_custom_clip_attr(
+                    clip, "title_media_properties")
+                bkg_color = tmp.get("background_color", (0.0, 0.0, 0.0, 1.0))
+                text_color = tmp.get("text_color") if tmp.get("text") else None
+                thumbnail_pixmap = self.__thumbnail_loader.create_title_thumbnail(
+                    THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, bkg_color, text_color)
+            else:
+                thumbnail_pixmap = self.__thumbnail_loader.request_thumbnail(value, callback)
         else:
             thumbnail_pixmap = None
 
@@ -143,8 +182,12 @@ class Model(QtCore.QAbstractTableModel):
             return QtCore.Qt.Checked if value is True else QtCore.Qt.Unchecked
 
         if role == QtCore.Qt.BackgroundRole:
-            if clip in self.__active_clips:
+            clip_color = self.__session_api.get_custom_clip_attr(clip, "clip_color")
+            if clip in self.__active_clips and \
+                (len(self.__active_clips) != self.rowCount()):
                 return QtGui.QColor(*ACTIVE_CLIPS_ROW_COLOR)
+            elif clip_color:
+                return QtGui.QColor.fromRgbF(*clip_color)
             else:
                 return None
 

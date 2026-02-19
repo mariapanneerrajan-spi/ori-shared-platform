@@ -48,9 +48,9 @@ $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
 Write-Host "Installing RPA wheel package..."
 & $RV_PYTHON_EXE -m pip install --target $RV_PYTHON_PATH "$SCRIPT_DIR\output\$RPA_WHL" --force-reinstall --upgrade
 
-# # Install requirements
-# Write-Host "Installing requirements..."
-# & $RV_PYTHON_EXE -m pip install --target $RV_PYTHON_PATH -r "$SCRIPT_DIR\requirements.txt" --upgrade
+# Install requirements
+Write-Host "Installing requirements..."
+& $RV_PYTHON_EXE -m pip install --target $RV_PYTHON_PATH -r "$SCRIPT_DIR\requirements.txt" --upgrade
 
 # Uninstall existing packages
 Write-Host "Uninstalling existing packages..."

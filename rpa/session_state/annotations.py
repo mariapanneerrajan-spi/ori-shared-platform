@@ -239,7 +239,10 @@ class Annotations:
         return frames
 
     def set_ro_annotations(self, frame, annotations):
-        self.ro_annos[frame] = annotations
+        if annotations:
+            self.ro_annos[frame] = annotations
+        else:
+            self.ro_annos.pop(frame, None)
 
     def set_rw_annotation(self, frame, annotation):
         self.rw_annos[frame] = annotation

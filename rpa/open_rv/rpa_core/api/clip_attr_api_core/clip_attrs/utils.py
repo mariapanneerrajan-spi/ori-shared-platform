@@ -54,6 +54,10 @@ def validate_cross_dissolve(source_group:str):
     else:
         commands.setIntProperty(f"{source_group}_cross_dissolve.node.active", [1], True)
         dissolve_start = key_length - dissolve_length + 1
+        if dissolve_start > key_length:
+            dissolve_start = 0
+            commands.setIntProperty(f"{source_group}_cross_dissolve.node.active", [0], True)
+
         commands.setFloatProperty(f"{source_group}_cross_dissolve.parameters.startFrame", [float(dissolve_start)], True)
         commands.setFloatProperty(f"{source_group}_cross_dissolve.parameters.numFrames", [float(dissolve_length)], True)
     return True

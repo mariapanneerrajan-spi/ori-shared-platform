@@ -71,6 +71,7 @@ class OTIOWriter(object):
     def __create_otio_clip(self, playlist_id:str, clip_id:str):
         media_reference = self.__create_media_reference(playlist_id, clip_id)
         clip_metadata = self.__get_clip_metadata(playlist_id, clip_id)
+        clip_color = self.__get_clip_color(clip_id)
 
         key_in = self.__session_api.get_attr_value(clip_id, "key_in")
         key_out = self.__session_api.get_attr_value(clip_id, "key_out")
@@ -86,7 +87,8 @@ class OTIOWriter(object):
 
         clip = otio.schema.Clip(
             media_reference=media_reference,
-            source_range=source_range
+            source_range=source_range,
+            color=clip_color
         )
         clip.metadata[C.ITVIEW_METADATA_KEY] = clip_metadata
 
@@ -199,3 +201,8 @@ class OTIOWriter(object):
                         setdefault("rw", []).extend(clip_rw_ccs)
 
         return clip_metadata
+
+    def __get_clip_color(self, clip_id):
+        color = self.__session_api.get_custom_clip_attr(clip_id, "clip_color")
+        clip_color = otio.core.Color.from_float_list(list(color)) if color else None
+        return clip_color

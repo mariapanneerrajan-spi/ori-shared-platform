@@ -1,11 +1,12 @@
 try:
     from PySide2 import QtCore, QtWidgets
-except ImportError:
+except:
     from PySide6 import QtCore, QtWidgets
 from functools import partial
 import uuid
 from collections import deque
 import os
+from rpa.utils.rv_overlays import OverlayType, RectOverlay, TextOverlay
 
 
 TEST_MEDIA_DIR = os.environ.get("TEST_MEDIA_DIR")
@@ -156,6 +157,8 @@ class TestSessionApi:
             partial(self.__create_clips),
             partial(self.__custom_attrs_1),
             partial(self.__clear_session),
+            partial(self.__set_header, "8 Setting Media Overlays"),
+            partial(self.__test_40)
         ]
         func = tests[self.__test_cnt]
         func()
@@ -750,6 +753,30 @@ class TestSessionApi:
         ])
         new_frame_count = self.__get_frame_count()
         test_eq("Number of Frames", old_frame_count - 100, new_frame_count)
+
+    def __test_40(self):
+        self.__label.setText("Set/Toggle media overlays")
+        playlist = self.__session_api.get_playlists()[0]
+        vm = "solid,red=1.0,green=1.0,blue=1.0,start=1,end=1,width=720,height=480.movieproc"
+        vm_clip_id = self.__session_api.create_clips(playlist, [vm])[0]
+        text_overlay = TextOverlay(
+            text="hello world", font_path="", size=8,
+            color=(0.0, 0.0, 1.0, 1.0), position = (0.5, 0.5)
+            )
+        rect_overlay = RectOverlay(
+            width = 200, height = 100,
+            color = (1.0, 0.0, 0.0, 0.5), position = (0.0, 0.0)
+        )
+        text_overlay_id = self.__rpa.session_api.set_media_overlay(
+            vm_clip_id, 1, text_overlay.to_json())
+        rect_overlay_id = self.__rpa.session_api.set_media_overlay(
+            vm_clip_id, 2, rect_overlay.to_json())
+        self.__session_api.toggle_media_overlay(vm_clip_id, text_overlay_id, 1, False)
+        self.__session_api.toggle_media_overlay(vm_clip_id, rect_overlay_id, 2, False)
+        self.__session_api.toggle_media_overlay(vm_clip_id, text_overlay_id, 1, True)
+        self.__session_api.toggle_media_overlay(vm_clip_id, rect_overlay_id, 2, True)
+        overlays_info = self.__session_api.get_media_overlays_info(vm_clip_id)
+        test_eq("clip media overlays count", 2, len(overlays_info))
 
     def __create_clips(self):
         self.__label.setText("Create Clips")

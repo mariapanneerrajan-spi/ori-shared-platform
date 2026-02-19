@@ -41,6 +41,7 @@ class FrameEditor(QtWidgets.QWidget):
         self.__init_ui()
         self.__connect_signals()
 
+        self.__edit_cache = {}
 
     def __init_ui(self):
         self.setWindowTitle("Frame Editor")
@@ -62,7 +63,7 @@ class FrameEditor(QtWidgets.QWidget):
         self.__header_layout.addWidget(self.__clip_frame_label)
         self.__header_widget.setLayout(self.__header_layout)
 
-        # FRAME CONTROL
+        # FRAME CONTROLS
         self.__prev_frame_button = QtWidgets.QPushButton("<", self)
         self.__prev_frame_button.setToolTip("Previous Frame")
         self.__prev_frame_button.setFixedSize(QtCore.QSize(30, 30))
@@ -117,15 +118,21 @@ class FrameEditor(QtWidgets.QWidget):
         self.__reset_button.setToolTip("Reset Frame Edits")
         self.__reset_button.setFocusPolicy(QtCore.Qt.NoFocus)
 
+        # TOGGLE
+        self.__toggle_button = QtWidgets.QPushButton("Toggle", self)
+        self.__toggle_button.setToolTip("Toggle Frame Edits")
+        self.__toggle_button.setFocusPolicy(QtCore.Qt.NoFocus)
+
         # CLOSE
         self.__close_button = QtWidgets.QPushButton("Close", self)
-        self.__close_button.setToolTip("Close AnimEdit Light")
+        self.__close_button.setToolTip("Close")
         self.__close_button.setFocusPolicy(QtCore.Qt.NoFocus)
 
         self.__footer_widget = QtWidgets.QWidget()
         self.__footer_layout = QtWidgets.QHBoxLayout()
         self.__footer_layout.addStretch()
         self.__footer_layout.addWidget(self.__reset_button)
+        self.__footer_layout.addWidget(self.__toggle_button)
         self.__footer_layout.addWidget(self.__close_button)
         self.__footer_widget.setLayout(self.__footer_layout)
 
@@ -135,6 +142,7 @@ class FrameEditor(QtWidgets.QWidget):
         self.main_layout.addWidget(self.__hold_widget)
         self.main_layout.addWidget(self.__drop_widget)
         self.main_layout.addWidget(self.__footer_widget)
+        self.main_layout.addStretch()
 
     def __connect_signals(self):
         self.__timeline_api.SIG_FRAME_CHANGED.connect(self.__timeline_frame_changed)
@@ -147,6 +155,7 @@ class FrameEditor(QtWidgets.QWidget):
         self.__hold_button.clicked.connect(self.__hold_frames)
         self.__drop_button.clicked.connect(self.__drop_frames)
         self.__reset_button.clicked.connect(self.reset_frames)
+        self.__toggle_button.clicked.connect(self.__toggle_frames)
         self.__close_button.clicked.connect(self.__close)
 
     def reconnect_signals(self):
@@ -201,10 +210,10 @@ class FrameEditor(QtWidgets.QWidget):
             clip_id, current_clip_frame, local_frame = clip_frame
             tw_in = self.__session_api.get_attr_value(clip_id, "timewarp_in")
             key_in = self.__session_api.get_attr_value(clip_id, "key_in")
-            if tw_in is not None:
-                current_tw_frame = tw_in + local_frame - 1
+            if tw_in:
+                current_tw_frame = int(tw_in) + local_frame - 1
             else:
-                current_tw_frame = key_in + local_frame - 1
+                current_tw_frame = int(key_in) + local_frame - 1
 
             if None not in (current_seq_frame, current_clip_frame, current_tw_frame):
                 self.__seq_frame_label.update_value(current_seq_frame)
@@ -307,6 +316,57 @@ class FrameEditor(QtWidgets.QWidget):
             self.__show_frame_edits_not_allowed_message()
             return
         self.__session_api.reset_frames(clip_id)
+        if self.__edit_cache:
+            self.__edit_cache.pop(clip_id, None)
+
+    def __toggle_frames(self):
+        clip_id = self.__session_api.get_current_clip()
+        if not clip_id: return
+
+        seq_frames = self.__timeline_api.get_seq_frames(clip_id)
+        clip_frames = self.__timeline_api.get_clip_frames()
+        start = self.__session_api.get_attr_value(clip_id, "media_start_frame")
+        end = self.__session_api.get_attr_value(clip_id, "media_end_frame")
+        hold_cache = None
+        drop_cache = None
+        new_cache = []
+
+        for i, seq_tuple in enumerate(seq_frames):
+            clip_frame, seqs = seq_tuple
+            # holds
+            if len(seqs) > 1:
+                hold_cache = (1, seqs[0], len(seqs) - 1)
+                new_cache.append(hold_cache)
+            # drops
+            if i == 0 and clip_frame != start:
+                drop_cache = (-1, seqs[0], clip_frame - start)
+                new_cache.append(drop_cache)
+            elif i == len(seq_frames) - 1 and clip_frame != end:
+                drop_cache = (-1, seqs[0], end - clip_frame)
+                new_cache.append(drop_cache)
+            else:
+                prev_clip_frame = int(seq_frames[i-1][0])
+                if prev_clip_frame == end:
+                    continue
+                if clip_frame != prev_clip_frame + 1:
+                    drop_cache = (-1, seqs[0], clip_frame - prev_clip_frame - 1)
+                    new_cache.append(drop_cache)
+
+        if not self.__edit_cache:
+            if not new_cache:
+                return
+            else:
+                self.__edit_cache[clip_id] = new_cache
+                self.__session_api.reset_frames(clip_id)
+        else:
+            if not new_cache:
+                edit_cache = self.__edit_cache[clip_id]
+                for cache in edit_cache:
+                    edit, local_frame, num_frames = cache
+                    self.__session_api.edit_frames(clip_id, edit, local_frame, num_frames)
+            else:
+                self.__edit_cache[clip_id] = new_cache
+                self.__session_api.reset_frames(clip_id)
 
     def __close(self):
         dock_widget = self.parentWidget()

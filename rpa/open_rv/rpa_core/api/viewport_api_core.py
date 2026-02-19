@@ -9,7 +9,7 @@ import numpy as np
 from OpenGL import GL
 try:
     from PySide2 import QtGui, QtCore, QtWebEngineWidgets
-except ImportError:
+except:
     from PySide6 import QtGui, QtCore, QtWebEngineWidgets
 from rv import commands as rvc
 from rv import extra_commands as rve
@@ -350,69 +350,65 @@ class ViewportApiCore(QtCore.QObject):
     def get_scale(self):
         return prop_util.get_property("#RVDispTransform2D.transform.scale")[0]
 
+    def is_flipped_x(self):
+        return self.__session.viewport.transforms.flip_x
+
     def flip_x(self, state):
-        current_scale = \
+        scale = \
             rvc.getFloatProperty("#RVDispTransform2D.transform.scale")
-        current_h_scale = current_scale[0]
-        current_v_scale = current_scale[1]
-        new_h_scale = (current_h_scale * -1)
+        h_scale = scale[0]
+        v_scale = scale[1]
 
-        current_translation = \
+        translation = \
             rvc.getFloatProperty("#RVDispTransform2D.transform.translate")
-        current_dx = current_translation[0]
-        current_dy = current_translation[1]
-        new_dx = (current_dx * -1)
+        dx = translation[0]
+        dy = translation[1]
 
-        self.set_translation(0.0, 0.0)
-        self.set_scale(new_h_scale, current_v_scale)
-        self.set_translation(new_dx, current_dy)
+        if state != (h_scale < 0):
+            self.set_translation(0.0, 0.0)
+            self.set_scale(h_scale * -1, v_scale)
+            self.set_translation(dx * -1, dy)
 
         self.__session.viewport.transforms.flip_x = state
 
-        new_scale = rvc.getFloatProperty("#RVDispTransform2D.transform.scale")
-        h_scale = new_scale[0]
-        v_scale = new_scale[1]
-
-        if h_scale < 0 and v_scale < 0:
+        if self.__session.viewport.transforms.flip_x and self.__session.viewport.transforms.flip_y:
             mode = FlipMode.BOTH
-        elif h_scale > 0 and v_scale < 0:
-            mode = FlipMode.VERT
-        elif h_scale < 0 and state:
+        elif self.__session.viewport.transforms.flip_x:
             mode = FlipMode.HORIZ
+        elif self.__session.viewport.transforms.flip_y:
+            mode = FlipMode.VERT
         else:
             mode = FlipMode.NONE
 
         self.display_msg(f"Flipped: {mode}")
         return True
 
+    def is_flipped_y(self):
+        return self.__session.viewport.transforms.flip_y
+
     def flip_y(self, state):
-        current_scale = \
+        scale = \
             rvc.getFloatProperty("#RVDispTransform2D.transform.scale")
-        current_h_scale = current_scale[0]
-        current_v_scale = current_scale[1]
-        new_v_scale = (current_v_scale * -1)
-
-        current_translation = \
-            rvc.getFloatProperty("#RVDispTransform2D.transform.translate")
-        current_dx = current_translation[0]
-        current_dy = current_translation[1]
-        new_dy = (current_dy * -1)
-
-        self.set_translation(0.0, 0.0)
-        self.set_scale(current_h_scale, new_v_scale)
-        self.set_translation(current_dx, new_dy)
-
-        self.__session.viewport.transforms.flip_y = state
-
-        scale = rvc.getFloatProperty("#RVDispTransform2D.transform.scale")
         h_scale = scale[0]
         v_scale = scale[1]
 
-        if h_scale < 0 and v_scale < 0:
+        translation = \
+            rvc.getFloatProperty("#RVDispTransform2D.transform.translate")
+        dx = translation[0]
+        dy = translation[1]
+
+        if state != (v_scale < 0):
+            self.set_translation(0.0, 0.0)
+            self.set_scale(h_scale, v_scale * -1)
+            self.set_translation(dx, dy * -1)
+
+        self.__session.viewport.transforms.flip_y = state
+
+        if self.__session.viewport.transforms.flip_x and self.__session.viewport.transforms.flip_y:
             mode = FlipMode.BOTH
-        elif h_scale < 0 and v_scale > 0:
+        elif self.__session.viewport.transforms.flip_x:
             mode = FlipMode.HORIZ
-        elif v_scale < 0 and state:
+        elif self.__session.viewport.transforms.flip_y:
             mode = FlipMode.VERT
         else:
             mode = FlipMode.NONE
@@ -587,11 +583,16 @@ class ViewportApiCore(QtCore.QObject):
     def get_rotation(self):
         return self.__session.viewport.rotation
 
+    def get_mask(self):
+        return self.__session.viewport.mask
+
     def set_mask(self, mask):
+        self.__session.viewport.mask = mask
         self.__unload_mask()
 
         # No Mask
         if mask is None:
+            rvc.redraw()
             return True
 
         # Mask: image path
@@ -618,8 +619,10 @@ class ViewportApiCore(QtCore.QObject):
 
         # Mask: none of the above
         else:
+            rvc.redraw()
             return False
 
+        rvc.redraw()
         return True
 
     def __unload_mask(self):

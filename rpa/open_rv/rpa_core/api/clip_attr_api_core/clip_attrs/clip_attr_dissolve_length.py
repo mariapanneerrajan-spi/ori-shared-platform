@@ -29,19 +29,21 @@ class ClipAttrDissolveLength:
 
     @property
     def default_value(self):
-        return 1
+        return 0
 
     @property
     def dependent_attr_ids(self):
         return ["dissolve_start"]
 
     def set_value(self, source_group:str, value:int)->bool:
+        if value < 0:
+            print("Dissolve length cannot be negative!")
+            return False
         if value == 0:
             commands.setIntProperty(f"{source_group}_cross_dissolve.node.active", [0], True)
             commands.setFloatProperty(f"{source_group}_cross_dissolve.parameters.startFrame", [float(0)], True)
             commands.setFloatProperty(f"{source_group}_cross_dissolve.parameters.numFrames", [float(0)], True)
             return True
-        
         key_in = get_key_in(source_group)
         key_out = get_key_out(source_group)
         if value > key_out - key_in + 1:
@@ -52,11 +54,11 @@ class ClipAttrDissolveLength:
         # the given dissolve length (value), i.e., dissolve_start = key_out - value + 1
         dissolve_start = key_out - value + 1
         # Clamp dissolve_start not to go below key_in
-        dissolve_start = max(dissolve_start, key_in)        
+        dissolve_start = max(dissolve_start, key_in)
         commands.setFloatProperty(f"{source_group}_cross_dissolve.parameters.startFrame", [float(float(dissolve_start - key_in + 1))], True)
         commands.setIntProperty(f"{source_group}_cross_dissolve.node.active", [1], True)
         return True
-        
+
     def get_value(self, source_group:str)->int:
         value = commands.getFloatProperty(f"{source_group}_cross_dissolve.parameters.numFrames")[0]
         return int(value)

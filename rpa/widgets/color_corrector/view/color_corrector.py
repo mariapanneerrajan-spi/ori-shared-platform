@@ -1,6 +1,6 @@
 try:
     from PySide2 import QtWidgets, QtGui, QtCore
-except ImportError:
+except:
     from PySide6 import QtWidgets, QtGui, QtCore
 
 from rpa.widgets.sub_widgets.striped_frame import StripedFrame

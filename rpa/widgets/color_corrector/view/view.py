@@ -4,7 +4,7 @@ View for Color Corrector
 
 try:
     from PySide2 import QtCore, QtWidgets
-except ImportError:
+except:
     from PySide6 import QtCore, QtWidgets
 from rpa.widgets.sub_widgets.mini_label_button import MiniLabelButton
 from rpa.widgets.color_corrector.view.tab_widget import ColorCorrectorTabWidget

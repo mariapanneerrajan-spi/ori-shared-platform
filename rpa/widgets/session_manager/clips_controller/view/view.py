@@ -1,6 +1,6 @@
 try:
     from PySide2 import QtCore, QtWidgets, QtGui
-except ImportError:
+except:
     from PySide6 import QtCore, QtWidgets, QtGui
 from rpa.widgets.session_manager.clips_controller.view.item_delegate \
     import ItemDelegate
@@ -11,7 +11,7 @@ from rpa.widgets.session_manager.clips_controller.view.style \
 
 
 class Table(QtWidgets.QTableView):
-    SIG_CONTEXT_MENU_REQUESTED = QtCore.Signal(int, QtCore.QPoint)
+    SIG_CONTEXT_MENU_REQUESTED = QtCore.Signal(str, int, QtCore.QPoint)
     SIG_EMPTY_SPACE_CLICKED = QtCore.Signal()
 
     def __init__(self, parent=None):
@@ -42,8 +42,18 @@ class Table(QtWidgets.QTableView):
 
     def contextMenuEvent(self, event):
         index = self.indexAt(event.pos()).row()
+        if index == -1:
+            actual_index = -1
+            clip_id = None
+        else:
+            source_model = self.model().sourceModel()
+            proxy_model = source_model.get_proxy_model()
+            source_mindex = proxy_model.mapToSource(self.indexAt(event.pos()))
+            actual_index = source_mindex.row()
+            clip_id = source_model.clips[actual_index]
+
         global_pos = self.mapToGlobal(event.pos())
-        self.SIG_CONTEXT_MENU_REQUESTED.emit(index, global_pos)
+        self.SIG_CONTEXT_MENU_REQUESTED.emit(clip_id, actual_index, global_pos)
 
     def mousePressEvent(self, event):
         index = self.indexAt(event.pos())

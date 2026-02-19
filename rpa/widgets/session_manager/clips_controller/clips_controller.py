@@ -1,7 +1,7 @@
 try:
     from PySide2 import QtCore, QtWidgets, QtGui
     from PySide2.QtWidgets import QShortcut
-except ImportError:
+except:
     from PySide6 import QtCore, QtWidgets, QtGui
     from PySide6.QtGui import QShortcut
 from rpa.widgets.session_manager.clips_controller.view.model import Model
@@ -31,6 +31,8 @@ class ClipsController(QtCore.QObject):
     SIG_COPY = QtCore.Signal()
     SIG_PASTE = QtCore.Signal()
     SIG_MOVE = QtCore.Signal(int)
+    SIG_ADD_TITLE = QtCore.Signal(int)
+    SIG_EDIT_TITLE = QtCore.Signal(str)
 
     def __init__(
         self, rpa, parent):
@@ -58,7 +60,7 @@ class ClipsController(QtCore.QObject):
             self.__refresh_all_attrs)
         self.__header_view_pref_cntrlr = HeaderViewPrefCntrlr(self.__header_view)
 
-        self.__context_menu = ContextMenu(self.__view.table)
+        self.__context_menu = ContextMenu(self.__session_api, self.__view.table)
         self.__context_menu.SIG_CREATE.connect(self.create)
         self.__context_menu.SIG_CUT.connect(self.SIG_CUT)
         self.__context_menu.SIG_COPY.connect(self.SIG_COPY)
@@ -69,6 +71,10 @@ class ClipsController(QtCore.QObject):
         self.__context_menu.SIG_MOVE_DOWN.connect(self.move_down)
         self.__context_menu.SIG_MOVE_TOP.connect(self.move_top)
         self.__context_menu.SIG_MOVE_BOTTOM.connect(self.move_bottom)
+        self.__context_menu.SIG_ADD_TITLE.connect(self.SIG_ADD_TITLE)
+        self.__context_menu.SIG_EDIT_TITLE.connect(self.SIG_EDIT_TITLE)
+        self.__context_menu.SIG_SET_COLOR.connect(self.set_color)
+        self.__context_menu.SIG_CLEAR_COLOR.connect(self.clear_color)
 
         self.__view.table.SIG_CONTEXT_MENU_REQUESTED.connect(
             self.__context_menu_requested)
@@ -100,6 +106,16 @@ class ClipsController(QtCore.QObject):
         delete_shortcut = QShortcut(QtGui.QKeySequence("Delete"), self.__view.table)
         delete_shortcut.setContext(QtCore.Qt.WidgetShortcut)
         delete_shortcut.activated.connect(self.delete_permanently)
+
+        set_color_shortcut = QShortcut(
+            QtGui.QKeySequence("Shift+C"), self.__view.table)
+        set_color_shortcut.setContext(QtCore.Qt.WidgetShortcut)
+        set_color_shortcut.activated.connect(self.set_color)
+
+        clear_color_shortcut = QShortcut(
+            QtGui.QKeySequence("Shift+X"), self.__view.table)
+        clear_color_shortcut.setContext(QtCore.Qt.WidgetShortcut)
+        clear_color_shortcut.activated.connect(self.clear_color)
 
     @property
     def view(self):
@@ -155,6 +171,37 @@ class ClipsController(QtCore.QObject):
         selected_clips = \
             self.__session_api.get_active_clips(self.__playlist)
         self.__session_api.move_clips_by_offset(1, selected_clips)
+
+    def set_color(self):
+        selected_clips = \
+            self.__session_api.get_active_clips(self.__playlist)
+
+        color = QtWidgets.QColorDialog().getColor(
+            QtGui.QColor("white"), self.__view, "Select Clip Color")
+        if color.isValid():
+            rgba = (round(color.redF(), 6),
+                    round(color.greenF(), 6),
+                    round(color.blueF(), 6),
+                    round(color.alphaF(), 6))
+        else:
+            rgba = None
+
+        if rgba is None:
+            return
+
+        for clip_id in selected_clips:
+            self.__session_api.set_custom_clip_attr(clip_id, "clip_color", rgba)
+
+        self.__model.update_background_role()
+
+    def clear_color(self):
+        selected_clips = \
+            self.__session_api.get_active_clips(self.__playlist)
+
+        for clip_id in selected_clips:
+            self.__session_api.set_custom_clip_attr(clip_id, "clip_color", None)
+
+        self.__model.update_background_role()
 
     def __playlists_modified(self):
         fg_playlist = self.__session_api.get_fg_playlist()
@@ -226,8 +273,8 @@ class ClipsController(QtCore.QObject):
 
         self.__config_api.endGroup()
 
-    def __context_menu_requested(self, index:int, pos:QtCore.QPoint):
-        self.__context_menu.trigger_menu(index, pos)
+    def __context_menu_requested(self, clip_id:str, index:int, pos:QtCore.QPoint):
+        self.__context_menu.trigger_menu(clip_id, index, pos)
 
     def __refresh_attr(self, attr):
         full_attr_ids = [(self.__playlist, clip, attr) for clip in self.__model.clips]

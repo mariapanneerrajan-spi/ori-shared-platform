@@ -2,7 +2,7 @@ import math
 
 try:
     from PySide2 import QtCore, QtGui, QtWidgets
-except ImportError:
+except:
     from PySide6 import QtGui, QtCore, QtWidgets
 
 from rpa.widgets.image_controller.actions import Actions

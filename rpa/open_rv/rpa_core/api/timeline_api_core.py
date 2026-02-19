@@ -1,6 +1,6 @@
 try:
     from PySide2 import QtCore
-except ImportError:
+except:
     from PySide6 import QtCore
 from rv import runtime
 from rv import extra_commands as rve
@@ -41,7 +41,7 @@ class TimelineApiCore(QtCore.QObject):
             "audio_api.check_for_scrubbing();", [])
         rvc.setFrame(frame)
 
-    def get_current_frame(self):
+    def get_current_frame(self, wait=False):
         return self.__session.timeline.get_current_frame()
 
     def get_frame_range(self):

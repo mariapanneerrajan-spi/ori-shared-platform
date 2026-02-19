@@ -2,7 +2,7 @@ import numpy as np
 import json
 try:
     from PySide2 import QtCore, QtGui, QtWidgets
-except ImportError:
+except:
     from PySide6 import QtCore, QtGui, QtWidgets
 from rpa.widgets.annotation.actions import Actions
 from rpa.widgets.annotation.tool_bar import ToolBar
@@ -11,6 +11,7 @@ from rpa.widgets.annotation.color_picker.controller import Controller as ColorPi
 from rpa.widgets.annotation.color_picker.model import Model as ColorPickerModel, Rgb
 from rpa.widgets.annotation.color_picker.view.view import View as ColorPickerView
 from rpa.widgets.annotation import constants as C
+from rpa.utils import utils
 
 from rpa.session_state.annotations import Annotation as RpaAnnotation
 from rpa.session_state.annotations import \
@@ -97,6 +98,16 @@ class Annotation(QtCore.QObject):
             self.__text_line_edit.setFocus()
 
     def __update_custom_attrs(self, out, attr_id, value):
+        if attr_id == C.PEN_WIDTH:
+            self.__set_pen_width(value)
+        if attr_id == C.ERASER_WIDTH:
+            self.__set_eraser_width(value)
+        if attr_id == C.PICKED_COLOR:
+            self.__set_color(*value)
+        if attr_id == C.SHOW_COLOR_PICKER and value is True:
+            self.__color_picker.show()
+        if attr_id == C.ENABLE_EYE_DROPPER and value is True:
+            self.__color_picker.SIG_EYE_DROPPER_ENABLED.emit(True)
         if attr_id == C.INTERACTIVE_MODE:
             self.__interactive_mode = value
             self.__last_point = None
@@ -115,37 +126,49 @@ class Annotation(QtCore.QObject):
         self.actions.clear_frame.triggered.connect(self.__clear_frame)
         self.actions.show_annotations.triggered.connect(self.__toggle_annotation_visibility)
         self.actions.prev_annot_frame.triggered.connect(
-            lambda: self.__goto_nearest_feedback_frame(forward=False)
+            lambda: utils.goto_nearest_feedback_frame(self.__rpa, forward=False)
         )
         self.actions.next_annot_frame.triggered.connect(
-            lambda: self.__goto_nearest_feedback_frame(forward=True)
+            lambda: utils.goto_nearest_feedback_frame(self.__rpa, forward=True)
         )
         self.actions.cut_annotations.triggered.connect(self.__cut_annotations)
         self.actions.copy_annotations.triggered.connect(self.__copy_annotations)
         self.actions.paste_annotations.triggered.connect(self.__paste_annotations)
 
         self.actions.SIG_DRAW_SIZE_CHANGED.connect(
-            lambda action: self.__set_pen_width(action.get_size())
+            lambda action: self.__pen_width_changed(action.get_size())
             )
         self.actions.SIG_ERASER_SIZE_CHANGED.connect(
-            lambda action: self.__set_eraser_width(action.get_size()))
+            lambda action: self.__eraser_width_changed(action.get_size()))
 
         self.actions.SIG_TEXT_SIZE_CHANGED.connect(
             lambda action: self.__set_text_size(action.get_size()))
 
         self.__color_picker = ColorPickerController(
             ColorPickerModel(), ColorPickerView(self.__main_window))
+        self.__color_picker.SIG_CLOSE.connect(self.__color_picker_closed)
 
         self.__color_picker.set_current_color(
             Rgb(self.__color.r, self.__color.g, self.__color.b))
 
         self.__color_picker.SIG_SET_CURRENT_COLOR.connect(
-            lambda rgb : self.__set_color(rgb.red, rgb.green, rgb.blue, 1.0))
+            lambda rgb : self.__update_picked_color(
+                rgb.red, rgb.green, rgb.blue, 1.0))
         self.actions.color.triggered.connect(lambda: self.__color_picker.show())
 
         self.actions.toggle_eye_dropper.triggered.connect(
             self.__color_picker.SIG_EYE_DROPPER_ENABLED
         )
+
+        self.actions.annotation_holding.triggered.connect(self.__annotation_holding)
+        self.__rpa.annotation_api.delegate_mngr.add_post_delegate(
+            self.__rpa.annotation_api.set_annotation_holding,
+            self.__set_annotation_holding)
+
+        self.actions.annotation_ghosting.triggered.connect(self.__annotation_ghosting)
+        self.__rpa.annotation_api.delegate_mngr.add_post_delegate(
+            self.__rpa.annotation_api.set_annotation_ghosting,
+            self.__set_annotation_ghosting)
 
         for rpa_method in [
             self.__session_api.set_fg_playlist,
@@ -188,9 +211,21 @@ class Annotation(QtCore.QObject):
             self.__rpa.viewport_api.set_feedback_visibility,
             self.__feedback_visibility_delegate)
 
+    def __pen_width_changed(self, width):
+        self.__rpa.session_api.set_custom_session_attr(
+            C.PEN_WIDTH, width)
+
+    def __eraser_width_changed(self, width):
+        self.__rpa.session_api.set_custom_session_attr(
+            C.ERASER_WIDTH, width)
+
+    def __color_picker_closed(self):
+        self.__rpa.session_api.set_custom_session_attr(
+            C.SHOW_COLOR_PICKER, False)
+
     def set_pen_color(self, color):
         r, g, b = color
-        self.__set_color(r, g, b, self.__color.a)
+        self.__update_picked_color(r, g, b, self.__color.a)
         self.blockSignals(True)
         out = self.__color_picker.set_current_color(
             Rgb(self.__color.r, self.__color.g, self.__color.b))
@@ -198,9 +233,13 @@ class Annotation(QtCore.QObject):
         self.blockSignals(False)
 
     def __set_pen_width(self, width):
+        self.tool_bar.draw_size_button.setIcon(
+            self.actions.draw_sizes[width].icon())
         self.__pen_width = width
 
     def __set_eraser_width(self, width):
+        self.tool_bar.eraser_size_button.setIcon(
+            self.actions.eraser_sizes[width].icon())
         self.__eraser_width = width
 
     def __set_text_size(self, size):
@@ -213,7 +252,7 @@ class Annotation(QtCore.QObject):
     def __set_text(self, text):
         if not self.__viewport_api.is_text_cursor_set(): return
         cguid = self.__session_api.get_current_clip()
-        frame = self.__get_current_clip_frame()
+        frame = utils.get_current_clip_frame(self.__rpa)
         self.__annotation_api.set_text(
             cguid, frame, Text(
                 text, self.__text_position, self.__color, self.__text_size))
@@ -435,7 +474,7 @@ class Annotation(QtCore.QObject):
                     self.__mouse_down = Data()
                     self.__mouse_down.interactive_mode = interactive_mode
                     self.__mouse_down.cguid = cguid
-                    self.__mouse_down.source_frame = self.__get_current_clip_frame()
+                    self.__mouse_down.source_frame = utils.get_current_clip_frame(self.__rpa)
                     if interactive_mode == C.INTERACTIVE_MODE_MOVE:
                         annotation = self.__annotation_api.get_rw_annotation(self.__mouse_down.cguid, self.__mouse_down.source_frame)
                         if annotation:
@@ -494,10 +533,19 @@ class Annotation(QtCore.QObject):
                 self.__tablet_down = Data()
                 self.__tablet_down.interactive_mode = C.INTERACTIVE_MODE_PEN
                 self.__tablet_down.cguid = cguid
-                self.__tablet_down.source_frame = self.__get_current_clip_frame()
+                self.__tablet_down.source_frame = utils.get_current_clip_frame(self.__rpa)
                 self.__append_tablet_point(*get_pos(), width, opacity)
 
+    def __update_picked_color(self, r, g, b, a):
+        self.__rpa.session_api.set_custom_session_attr(
+            C.PICKED_COLOR, (r, g, b, a))
+
     def __set_color(self, r, g, b, a):
+        """
+        To make sure the correct color is set even from other widgets which
+        might want to change the color, this method is meant to be called from
+        the __update_custom_attrs method.
+        """
         self.actions.set_color(r, g, b, a)
         self.__color = Color(r, g, b, a)
         if self.__viewport_api.is_text_cursor_set():
@@ -514,19 +562,13 @@ class Annotation(QtCore.QObject):
             lambda text: self.__set_text(text))
 
     def __undo(self):
-        cguid = self.__session_api.get_current_clip()
-        current_frame = self.__get_current_clip_frame()
-        self.__annotation_api.undo(cguid, current_frame)
+        utils.undo_annotations(self.__rpa)
 
     def __redo(self):
-        cguid = self.__session_api.get_current_clip()
-        current_frame = self.__get_current_clip_frame()
-        self.__annotation_api.redo(cguid, current_frame)
+        utils.redo_annotations(self.__rpa)
 
     def __clear_frame(self):
-        cguid = self.__session_api.get_current_clip()
-        current_frame = self.__get_current_clip_frame()
-        self.__annotation_api.clear_frame(cguid, current_frame)
+        utils.clear_current_frame_annotations(self.__rpa)
 
     def __feedback_visibility_delegate(self, out, category, value):
         if category == 1:
@@ -596,49 +638,6 @@ class Annotation(QtCore.QObject):
             for frame in frames:
                 self.__annotation_api.delete_rw_annotation(clip_id, frame)
 
-    def __goto_nearest_feedback_frame(self, forward):
-        playlist_id = self.__session_api.get_fg_playlist()
-        clip_id = self.__session_api.get_current_clip()
-        if not playlist_id or not clip_id:
-            return False
-        current_frame = self.__timeline_api.get_current_frame()
-        clip_ids = self.__session_api.get_clips(playlist_id)
-        num_of_clips = len(clip_ids)
-        def get_unique_values(l1, l2):
-            unique_values = set(l1).union(set(l2))
-            return sorted(unique_values)
-        for ii, i in enumerate(range(num_of_clips+1)):
-            clip_index = (clip_ids.index(clip_id) + (i if forward else -i)) % num_of_clips
-            new_clip_id = clip_ids[clip_index]
-            annotation_frames = self.__annotation_api.get_rw_frames(new_clip_id) \
-                                + self.__annotation_api.get_ro_frames(new_clip_id)
-            cc_frames = self.__color_api.get_rw_frames(new_clip_id) \
-                        + self.__color_api.get_ro_frames(new_clip_id)
-            frames = get_unique_values(annotation_frames, cc_frames)
-            if not frames: continue
-            seq_frames = self.__timeline_api.get_seq_frames(new_clip_id, frames)
-            if not seq_frames: continue
-            first_seq_frames_only = [seqs[0] for _, seqs in seq_frames]
-            seq_frames_only = first_seq_frames_only if forward else list(reversed(first_seq_frames_only))
-            for frame in seq_frames_only:
-                if frame == -1:
-                    continue
-                if new_clip_id != clip_id:
-                    self.__session_api.set_current_clip(new_clip_id)
-                    self.__timeline_api.goto_frame(frame)
-                    return
-                if forward:
-                    if (ii == 0 and frame > current_frame) \
-                            or (ii != 0 and frame < current_frame):
-                        self.__timeline_api.goto_frame(frame)
-                        return
-                else:
-                    if (ii == 0 and frame < current_frame) \
-                            or (ii != 0 and frame > current_frame):
-                        self.__timeline_api.goto_frame(frame)
-                        return
-        return
-
     def __get_current_clip_frame(self):
         clip_frame = self.__timeline_api.get_clip_frames([self.__timeline_api.get_current_frame()])
         if not clip_frame:
@@ -648,3 +647,18 @@ class Annotation(QtCore.QObject):
             if type(clip_frame) is not tuple:
                 return -1
             return clip_frame[1]
+
+    def __annotation_ghosting(self):
+        value = self.__annotation_api.get_annotation_ghosting()
+        self.__annotation_api.set_annotation_ghosting(not value)
+
+    def __set_annotation_ghosting(self, out, value):
+        self.actions.annotation_ghosting.setChecked(value)
+
+    def __annotation_holding(self):
+        value = self.__annotation_api.get_annotation_holding()
+        self.__annotation_api.set_annotation_holding(not value)
+
+    def __set_annotation_holding(self, out, value):
+        self.actions.annotation_holding.setChecked(value)
+

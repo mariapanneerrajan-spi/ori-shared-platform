@@ -1,7 +1,7 @@
 try:
     from PySide2 import QtCore, QtGui, QtWidgets
     from PySide2.QtWidgets import QAction
-except ImportError:
+except:
     from PySide6 import QtCore, QtGui, QtWidgets
     from PySide6.QtGui import QAction
 from rpa.widgets.session_manager.clips_controller.view.model import THUMBNAIL_WIDTH
@@ -209,7 +209,7 @@ class HeaderViewPrefCntrlr:
     def set_attrs(self, attrs):
 
         if len(attrs) == 1 and attrs[0] == "play_order":
-            attrs = ["play_order", "media_path", "key_in", "key_out", "timewarp_in", "timewarp_out", "timewarp_length"]
+            attrs = ["play_order", "media_path"]
         all_attrs = []
         attrs_set = set(attrs)
         for action in self.__view.clip_attrs_menu.actions():

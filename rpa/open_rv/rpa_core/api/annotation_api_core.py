@@ -3,12 +3,13 @@ import time
 from collections import deque
 try:
     from PySide2 import QtCore
-except ImportError:
+except:
     from PySide6 import QtCore
 from OpenGL import GL
 
 from rv import commands as rvc
 from rv import extra_commands as rve
+from rv import runtime
 
 from rpa.session_state.annotations import \
     Stroke, StrokeMode, StrokeBrush, Text
@@ -17,14 +18,21 @@ from rpa.open_rv.rpa_core.api.utils import \
     rv_to_image, rv_to_itview, image_to_rv, itview_to_rv
 from rpa.open_rv.rpa_core.api import prop_util
 
-
 LASER_POINT_DELAY = 1.0
 LASER_TRAIL_DELAY = 0.05
 LASER_TRAIL_MAX_POINTS = 1000
 
+MAX_STROKE_COUNT = 1024
 
 def isclose(a, b):
     return abs(a - b) < 1e-6
+
+def display_msg(message:str, duration:float=2.0):
+    view_render_mu = \
+        f"""require view_render;
+        view_render.display_feedback("{message}", {duration});
+        """
+    runtime.eval(view_render_mu, [])
 
 
 class AnnotationApiCore(QtCore.QObject):
@@ -63,6 +71,9 @@ class AnnotationApiCore(QtCore.QObject):
             prop_util.set_property(prop, [is_visible])
 
     def append_transient_point(self, clip_id, frame, token, stroke_point, is_line=False):
+        runtime.eval(
+            "require rv_state_mngr;"
+            "rv_state_mngr.disable_frame_change_mouse_events();",[])
         source_node, paint_node = self.__get_source_and_paint_node(clip_id)
         if None in (source_node, paint_node):
             return False
@@ -85,6 +96,8 @@ class AnnotationApiCore(QtCore.QObject):
             prop_util.set_property(f"{paint_node}.{name}.brush", [new_brush])
             prop_util.set_property(f"{paint_node}.{name}.mode", [new_mode])
             prop_util.set_property(f"{paint_node}.{name}.points", [new_point])
+            prop_util.set_property(f"{paint_node}.{name}.startFrame", [frame])
+            prop_util.set_property(f"{paint_node}.{name}.duration", [1])
             prop_util.append_property(f"{paint_node}.frame:{frame}.order", [name])
             return True
 
@@ -111,6 +124,8 @@ class AnnotationApiCore(QtCore.QObject):
             prop_util.set_property(f"{paint_node}.{name}.brush", [new_brush])
             prop_util.set_property(f"{paint_node}.{name}.mode", [new_mode])
             prop_util.set_property(f"{paint_node}.{name}.points", [new_point])
+            prop_util.set_property(f"{paint_node}.{name}.startFrame", [frame])
+            prop_util.set_property(f"{paint_node}.{name}.duration", [1])
             prop_util.append_property(f"{paint_node}.frame:{frame}.order", [name])
             return True
 
@@ -147,6 +162,8 @@ class AnnotationApiCore(QtCore.QObject):
                 prop_util.delete_property(f"{paint_node}.{name}.brush")
                 prop_util.delete_property(f"{paint_node}.{name}.mode")
                 prop_util.delete_property(f"{paint_node}.{name}.points")
+                prop_util.delete_property(f"{paint_node}.{name}.startFrame")
+                prop_util.delete_property(f"{paint_node}.{name}.duration")
             else:
                 names.append(name)
         prop_util.set_property(f"{paint_node}.frame:{frame}.order", names)
@@ -208,6 +225,10 @@ class AnnotationApiCore(QtCore.QObject):
             source_node, _ = self.__get_source_and_paint_node(clip_id)
             paint_node = self.__get_ro_paint_node(clip_id)
             for frame, annotations in frame_annotations.items():
+                for a in annotations:
+                    if len(a.annotations) > MAX_STROKE_COUNT:
+                        display_msg("Annotation is too large and will be truncated", 5)
+                        a.annotations = a.annotations[:MAX_STROKE_COUNT]
                 clip.annotations.set_ro_annotations(frame, annotations)
                 self.__redraw_annotations(source_node, paint_node, frame, annotations)
             self.PRG_ANNO_LOADED.emit(count, total_clips)
@@ -369,7 +390,7 @@ class AnnotationApiCore(QtCore.QObject):
                 name = f"pen:{next_id}:{frame}:{creator}"
                 annotation.set_custom_attr("rv_pen", name)
                 self.__set_stroke_properties(
-                    source_node, paint_node, annotation, prev_stroke)
+                    source_node, paint_node, frame, annotation, prev_stroke)
                 prev_stroke = annotation
             elif isinstance(annotation, Text):
                 name = f"text:{next_id}:{frame}:{creator}"
@@ -395,7 +416,7 @@ class AnnotationApiCore(QtCore.QObject):
                         annotation_names.append(name)
                         annotation.set_custom_attr("rv_pen", name)
                         self.__set_stroke_properties(
-                            source_node, paint_node, annotation, prev_stroke)
+                            source_node, paint_node, frame, annotation, prev_stroke)
                         prev_stroke = annotation
                 elif isinstance(annotation, Text):
                     if self.__session.viewport.feedback.are_texts_visible:
@@ -408,7 +429,7 @@ class AnnotationApiCore(QtCore.QObject):
                 prop_util.set_property(f"{paint_node}.paint.nextId", [next_id])
         prop_util.append_property(f"{paint_node}.frame:{frame}.order", annotation_names)
 
-    def __set_stroke_properties(self, source_node, paint_node, stroke, prev_stroke):
+    def __set_stroke_properties(self, source_node, paint_node, frame, stroke, prev_stroke):
         smi = rvc.sourceMediaInfo(source_node)
         width, height = smi["width"], smi["height"]
         name = stroke.get_custom_attr("rv_pen")
@@ -428,10 +449,14 @@ class AnnotationApiCore(QtCore.QObject):
             f"{paint_node}.{name}.brush", [stroke.brush])
         prop_util.set_property(
             f"{paint_node}.{name}.mode", [stroke.mode])
-        points = [itview_to_rv(width, height, *point.__getstate__()) \
-                for point in stroke.points]
         prop_util.set_property(
             f"{paint_node}.{name}.points", points)
+        prop_util.set_property(
+            f"{paint_node}.{name}.startFrame",
+            [frame])
+        prop_util.set_property(
+            f"{paint_node}.{name}.duration",
+            [1])
 
     def __set_text_properties(self, source_node, paint_node, text):
         smi = rvc.sourceMediaInfo(source_node)
@@ -663,6 +688,8 @@ class AnnotationApiCore(QtCore.QObject):
                 prop_util.delete_property(f"{paint_node}.{name}.brush")
                 prop_util.delete_property(f"{paint_node}.{name}.mode")
                 prop_util.delete_property(f"{paint_node}.{name}.points")
+                prop_util.delete_property(f"{paint_node}.{name}.startFrame")
+                prop_util.delete_property(f"{paint_node}.{name}.duration")
             if "text" in name:
                 prop_util.delete_property(f"{paint_node}.{name}.text")
                 prop_util.delete_property(f"{paint_node}.{name}.color")
@@ -670,6 +697,7 @@ class AnnotationApiCore(QtCore.QObject):
                 prop_util.delete_property(f"{paint_node}.{name}.size")
             prop_util.delete_property(f"{paint_node}.{name}")
         prop_util.delete_property(f"{paint_node}.frame:{frame}.order")
+        rvc.redraw()
 
     def __get_last_transient_stroke_name(self, paint_node, frame, token):
         transient_token = f":transient:{token}"
@@ -692,3 +720,19 @@ class AnnotationApiCore(QtCore.QObject):
             color=Color(*prop_util.get_property(f"{paint_node}.{name}.color")[0]),
             points=[Point(*rv_to_itview(width, height, *point)) for point in prop_util.get_property(f"{paint_node}.{name}.points")]
         )
+
+    def get_annotation_ghosting(self):
+        return self.__session.viewport.feedback.annotation_ghosting
+
+    def set_annotation_ghosting(self, value):
+        self.__session.viewport.feedback.annotation_ghosting = value
+        prop_util.set_property("rv.paintEffects.ghost", [int(value)])
+        rvc.sendInternalEvent("graph-state-change", "rv.paintEffects.ghost")
+
+    def get_annotation_holding(self):
+        return self.__session.viewport.feedback.annotation_holding
+
+    def set_annotation_holding(self, value):
+        self.__session.viewport.feedback.annotation_holding = value
+        prop_util.set_property("rv.paintEffects.hold", [int(value)])
+        rvc.sendInternalEvent("graph-state-change", "rv.paintEffects.hold")

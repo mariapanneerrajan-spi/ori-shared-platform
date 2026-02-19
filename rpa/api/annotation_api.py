@@ -14,7 +14,7 @@ have only 1 Read-Only Annotation.
 
 try:
     from PySide2 import QtCore
-except ImportError:
+except:
     from PySide6 import QtCore
 from rpa.delegate_mngr import DelegateMngr
 from rpa.session_state.annotations import \
@@ -386,3 +386,39 @@ class AnnotationApi(QtCore.QObject):
             (bool) : True if success False otherwise
         """
         return self.__delegate_mngr.call(self.set_pointer, [stroke_point])
+
+    def get_annotation_ghosting(self)-> bool:
+        """
+        Get whether annotation ghosting is enabled.
+
+        Returns:
+            bool: True if annotation ghosting is enabled, otherwise False.
+        """
+        return self.__delegate_mngr.call(self.get_annotation_ghosting)
+
+    def set_annotation_ghosting(self, value:bool):
+        """
+        Set whether annotation ghosting is enabled.
+
+        Args:
+            value (bool): True to enable annotation ghosting, False to disable it.
+        """
+        return self.__delegate_mngr.call(self.set_annotation_ghosting, [value])
+
+    def get_annotation_holding(self)-> bool:
+        """
+        Get whether annotation holding is enabled.
+
+        Returns:
+            bool: True if annotation holding is enabled, otherwise False.
+        """
+        return self.__delegate_mngr.call(self.get_annotation_holding)
+
+    def set_annotation_holding(self, value:bool):
+        """
+        Set whether annotation holding is enabled.
+
+        Args:
+            value (bool): True to enable annotation holding, False to disable it.
+        """
+        return self.__delegate_mngr.call(self.set_annotation_holding, [value])

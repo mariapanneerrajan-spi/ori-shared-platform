@@ -4,7 +4,7 @@ Controller for Color Corrector
 import numpy as np
 try:
     from PySide2 import QtCore, QtWidgets
-except ImportError:
+except:
     from PySide6 import QtCore, QtWidgets
 
 from rpa.session_state.utils import screen_to_itview
@@ -266,12 +266,12 @@ class Controller(QtCore.QObject):
         return points
 
     def __copy_clicked(self):
-        self.__clipboard_cc = self.current_tab.id
+        self.__clipboard_cc = (self.current_clip, self.current_tab.id)
 
     def __paste_clicked(self):
         cc_id = self.current_tab.id
         self.__cc_api.clear_nodes(self.current_clip, cc_id)
-        nodes = self.__cc_api.get_nodes(self.current_clip, self.__clipboard_cc)
+        nodes = self.__cc_api.get_nodes(self.__clipboard_cc[0], self.__clipboard_cc[1])
         self.__cc_api.append_nodes(self.current_clip, cc_id, nodes)
 
     def __mute_tab(self):
@@ -329,7 +329,7 @@ class Controller(QtCore.QObject):
                 color_timer_mute = color_timer.get_mute()
                 color_timer_values = color_timer.get_all()
                 grade_mute = grade.get_mute()
-                grade_values = grade.get_all()               
+                grade_values = grade.get_all()
                 cc_string += "\nColorTimer:"
                 cc_string += f"\n{indent}mute: {color_timer_mute}"
                 for color_knob, value in color_timer_values.items():
@@ -340,7 +340,7 @@ class Controller(QtCore.QObject):
                 for color_knob, value in grade_values.items():
                     value_str = self.__convert_to_str(value)
                     cc_string += f"\n{indent}{color_knob}: {value_str}"
-        
+
         print(cc_string)
 
     def __convert_to_str(self, value):

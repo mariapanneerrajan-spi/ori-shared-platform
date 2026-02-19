@@ -89,8 +89,12 @@ class Timeline:
             clips.append(self.__session.get_clip(clip_id))
 
         seq_frame = 1
-        for clip in clips:
-            src_frames = clip.get_timeline_frames()
+        last_clip_index = len(clips) - 1
+        for i, clip in enumerate(clips):
+            if len(clips) > 1 and i != last_clip_index:
+                src_frames = clip.get_timeline_frames()
+            else:
+                src_frames = clip.get_source_frames()
             for local_frame, clip_frame in enumerate(src_frames, 1):
                 self.__seq_to_clip[seq_frame] = (clip.id, clip_frame, local_frame)
                 clip_to_seq = self.__clip_to_seq.setdefault(clip.id, {})

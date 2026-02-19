@@ -3,6 +3,7 @@ from rpa.open_rv.rpa_core.api.clip_attr_api_core.clip_attrs import \
     clip_attr_audio_offset, \
     clip_attr_audio_path, \
     clip_attr_audio_type, \
+    clip_attr_cut_length_ft, \
     clip_attr_cut_length, \
     clip_attr_dynamic_rotation, \
     clip_attr_dynamic_scale_x, \

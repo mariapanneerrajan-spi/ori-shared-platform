@@ -2,7 +2,7 @@ import os
 try:
     from PySide2 import QtCore, QtWidgets
     from PySide2.QtWidgets import QAction
-except ImportError:
+except:
     from PySide6 import QtCore, QtWidgets
     from PySide6.QtGui import QAction
 
@@ -27,7 +27,6 @@ from rpa.widgets.media_path_overlay.media_path_overlay import MediaPathOverlay
 from rpa.widgets.session_auto_saver.session_auto_saver import SessionAutoSaver
 from rpa.widgets.frame_editor.frame_editor import FrameEditor
 from rpa.widgets.help_menu.help_menu import HelpMenu
-from rpa.widgets.tablethelper.TabletHelper import TabletHelper
 # from rpa.widgets.playlist_creator.playlist_creator import PlaylistCreator
 
 from rpa.widgets.test_widgets.test_session_api import TestSessionApi
@@ -273,12 +272,13 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
         commands.unbind("default", "global", 'key-down--~')
         commands.unbind("default", "global", 'key-down--f2')
 
+        commands.unbind("default", "global", 'key-down--shift--c')
+
         self.__viewport_widget.installEventFilter(self)
 
         self.__session_manager_dock = None
         self.__session_assistant_dock = None
         self.__timeline_toolbar = None
-        self.__tablet_helper_toolbar = None
         self.__image_controller = None
         self.__annotation_dock = None
         self.__color_corrector_dock = None
@@ -296,14 +296,11 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
         self.__test_delegate_manager_dock = None
 
         self.__show_session_manager()
-        # self.__show_annotation()
+        self.__show_annotation()
         self.__hide_rv_timeline()
         self.__show_timeline()
-        # self.__show_color_corrector()
+        self.__show_color_corrector()
         self.__show_session_auto_saver(False)
-        # self.__show_frame_editor(True)
-        self.__show_test_session_api()
-        self.__show_tablet_helper()
 
         commands.writeSettings("rpa", "is_rpa_mode", True)
 
@@ -313,7 +310,7 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
             if action and action.text() == "File":
                 action.setText("File (rpa)")
                 sub_menu = action.menu()
-                # sub_menu.clear()
+                sub_menu.clear()
 
                 action = QAction("Add Clips", parent=self.__main_window)
                 action.setShortcut("Ctrl+O")
@@ -331,6 +328,10 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
 
                 action = QAction("Replace RPA Session", parent=self.__main_window)
                 action.triggered.connect(self.__replace_rpa_session)
+                sub_menu.addAction(action)
+
+                action = QAction("Clear RPA Session", parent=self.__main_window)
+                action.triggered.connect(self.__clear_rpa_session)
                 sub_menu.addAction(action)
 
             if action and action.text() == "Control":
@@ -353,7 +354,9 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
                         rpa_widgets_menu = sub_action
                     if sub_action.text() == "Timeline Magnifier":
                         action_to_insert_before = sub_action
-                    if sub_action.text() in [
+                    if sub_action.text().strip() == "Region Cache":
+                        sub_action.setShortcut("")
+                    if sub_action.text().strip() in [
                     "Default Views", "   Sequence", "   Replace", "   Over", "   Add",
                     "   Difference", "   Difference (Inverted)", "   Tile",
                     "Menu Bar", "Top View Toolbar", "Bottom View Toolbar",
@@ -445,9 +448,9 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
         # action.triggered.connect(self.__show_playlists_creator)
         # rpa_widgets_menu.addAction(action)
 
-        action = QAction("Test Session API", parent=self.__main_window)
-        action.triggered.connect(self.__show_test_session_api)
-        rpa_widgets_menu.addAction(action)
+        # action = QAction("Test Session API", parent=self.__main_window)
+        # action.triggered.connect(self.__show_test_session_api)
+        # rpa_widgets_menu.addAction(action)
 
         # action = QAction("Test Timeline API", parent=self.__main_window)
         # action.triggered.connect(self.__show_test_timeline_api)
@@ -482,6 +485,9 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
 
     def __replace_rpa_session(self):
         self.__session_io.replace_session_action.trigger()
+
+    def __clear_rpa_session(self):
+        self.__session_io.clear_session_action.trigger()
 
     def _add_clips(self, event):
         self.__add_clips()
@@ -567,19 +573,6 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
                 self.__timeline_toolbar.set_visible(True)
             return
         self.__timeline_toolbar = TimelineController(self.__rpa, self.__main_window)
-
-    def __show_tablet_helper(self):
-        if not self.__is_init_done():
-            return
-        if self.__tablet_helper_toolbar:
-            if self.__tablet_helper_toolbar.isVisible():
-                self.__tablet_helper_toolbar.set_visible(False)
-            else:
-                self.__tablet_helper_toolbar.set_visible(True)
-            return
-        self.__tablet_helper_toolbar = TabletHelper(self.__rpa, self.__main_window)
-        # self.__main_window.addToolBar(QtCore.Qt.LeftToolBarArea, self.__tablet_helper_toolbar)
-        self.__tablet_helper_toolbar.set_visible(True)
 
     def _show_annotation(self, event):
         self.__show_annotation()
@@ -880,6 +873,10 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
         if self.__main_window and self.__rpa: return True
         elif self.__main_window and self.__rpa is None: return True
         return False
+
+    def __toggle_dock_visibility(self, dock):
+        if dock.isVisible(): dock.hide()
+        else: dock.show()
 
 
 def createMode():

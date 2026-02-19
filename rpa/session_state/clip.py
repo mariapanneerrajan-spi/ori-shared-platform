@@ -8,20 +8,23 @@ import copy
 
 class Clip:
     id_to_self = {}
-    def __init__(self, playlist_id, id, path):
+    def __init__(self, playlist_id, id, path, cc_uuid_generator):
         Clip.id_to_self[id] = self
         self.__playlist_id = playlist_id
         self.__id = id
         self.path = path
         self.__attrs = {}
         self.__custom_attrs = {}
-        self.__color_corrections = ColorCorrections()
+        self.__color_corrections = ColorCorrections(cc_uuid_generator)
         self.__annotations = Annotations()
 
         # frame edits
         self.__source_frames = []
         self.__has_key_in_out_edits = False
         self.__has_frame_edits = False
+
+        # media overlays
+        self.__media_overlays = []
 
     @property
     def id(self):
@@ -200,6 +203,14 @@ class Clip:
         self.__update_has_frame_edits()
         self.__set_timewarp_attr_values()
 
+    def set_source_frames(self, source_frames):
+        if self.__has_key_in_out_edits:
+            print("frame edits are not allowed when key_in and/or key_out edits are present!")
+            return
+        self.__source_frames = source_frames
+        self.__set_timewarp_attr_values()
+        self.__update_has_frame_edits()
+
     def reset_frames(self):
         if self.__has_key_in_out_edits:
             print("reset frame edits are not allowed when key_in and/or key_out edits are present!")
@@ -264,6 +275,20 @@ class Clip:
             self.set_attr_value("timewarp_in", None)
             self.set_attr_value("timewarp_out", None)
             self.set_attr_value("timewarp_length", None)
+
+    def set_media_overlay_info(self, overlay_id, overlay_type, overlay_data):
+        new_media_overlay = (overlay_id, overlay_type, overlay_data)
+        for i, (id_, type_, data_) in enumerate(self.__media_overlays):
+            if isinstance(overlay_id, str) and id_ == overlay_id and \
+                isinstance(overlay_type, int) and type_ == overlay_type:
+                self.__media_overlays[i] = new_media_overlay
+                return
+
+        if isinstance(overlay_id, str) and isinstance(overlay_type, int):
+            self.__media_overlays.append(new_media_overlay)
+
+    def get_media_overlays_info(self):
+        return self.__media_overlays
 
     def get_attrs(self):
         return copy.deepcopy(self.__attrs)

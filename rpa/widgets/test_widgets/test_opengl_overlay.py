@@ -2,7 +2,7 @@ import sys
 import numpy as np
 try:
     from PySide2 import QtWidgets, QtGui, QtCore, QtOpenGL
-except ImportError:
+except:
     from PySide2 import QtWidgets, QtGui, QtCore, QtOpenGL
 from OpenGL.GL import *
 

@@ -43,7 +43,7 @@ class ClipAttrKeyIn:
 
         key_out = get_key_out(source_group)
         if value > key_out:
-            print("key_in change is not allowed when key_out is greater")
+            print("key_in change is not allowed when greater than key_out")
             return False
 
         if not isinstance(value, int):

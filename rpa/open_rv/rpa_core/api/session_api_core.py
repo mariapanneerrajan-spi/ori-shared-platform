@@ -1,13 +1,17 @@
 from rpa.session_state.session import Session
 try:
     from PySide2 import QtCore, QtWidgets
-except ImportError:
+except:
     from PySide6 import QtCore, QtWidgets
 from rv import commands, runtime, extra_commands
 from typing import List, Any
 from rpa.open_rv.rpa_core.api import prop_util
 from rpa.open_rv.rpa_core.api.clip_attr_api_core.clip_attr_api_core \
     import ClipAttrApiCore
+
+from rpa.open_rv.rpa_core.api.utils import image_to_rv, itview_to_rv
+from rpa.utils.rv_overlays import OverlayType, RectOverlay, TextOverlay
+from rpa.session_state.session import Session
 from pymu import MuSymbol
 
 
@@ -40,7 +44,7 @@ class SessionApiCore(QtCore.QObject):
 
     def __init__(self, session, annotation_api):
         super().__init__()
-        self.__session = session
+        self.__session: Session = session
         self.__annotation_api = annotation_api
         self.__timeline_api = None
         self.__clip_attr_api = ClipAttrApiCore.get_instance()
@@ -173,20 +177,20 @@ class SessionApiCore(QtCore.QObject):
     def set_fg_playlist(self, id):
         current_frame = commands.frame()
         self.__session.set_fg_playlist(id)
+        # self.__set_fg_pl_seq_grp_to_view_node()
         if self.__session.viewport.bg is None:
             playlist = self.__session.get_playlist(self.__session.viewport.fg)
             self.__update_clip_nodes_in_playlist_node(playlist)
             self.SIG_PLAYLIST_MODIFIED.emit(playlist.id)
             self.__update_current_clip()
-        else:
-            self.__update_clip_nodes_in_playlist_node(
-                self.__session.get_playlist(self.__session.viewport.bg))
-        if self.__session.viewport.bg_mode != 0:
-            self.__set_bg_mode(self.__session.viewport.bg_mode)
-        elif self.__session.viewport.mix_mode != 0:
-            self.__set_mix_mode(self.__session.viewport.mix_mode)
-        else:
             self.__set_fg_pl_seq_grp_to_view_node()
+        else:
+            self.set_bg_playlist(self.__session.viewport.bg)
+            if self.__session.viewport.bg_mode != 0:
+                self.__set_bg_mode(self.__session.viewport.bg_mode)
+            elif self.__session.viewport.mix_mode != 0:
+                self.__set_mix_mode(self.__session.viewport.mix_mode)
+        self.__toggle_bg_sync_retime(id, False)
         self.__update_current_clip()
         self.__set_current_frame(current_frame)
         self.__redraw_annotations()
@@ -195,6 +199,11 @@ class SessionApiCore(QtCore.QObject):
 
     def set_bg_playlist(self, id):
         self.__session.set_bg_playlist(id)
+        # Cache source frames since we might change it because of sync modes
+        clip_ids = self.get_clips(id)
+        for clip_id in clip_ids:
+            clip = self.__session.get_clip(clip_id)
+            clip.set_custom_attr("source_frames", clip.get_source_frames())
         current_frame = commands.frame()
         if self.__session.viewport.bg is not None:
             self.__update_clip_nodes_in_playlist_node(
@@ -210,8 +219,133 @@ class SessionApiCore(QtCore.QObject):
             commands.setFrame(current_frame)
         else:
             self.__set_current_frame(current_frame)
+        self.__update_bg_retime_node(id)
         self.SIG_PLAYLISTS_MODIFIED.emit()
         return True
+
+    def __update_bg_retime_node(self, bg_playlist_id):
+        if len(self.get_clips(bg_playlist_id)) == 0:
+            return
+        if bg_playlist_id is None:
+            return
+        fg_playlist = self.__session.get_playlist(self.get_fg_playlist())
+        bg_playlist = self.__session.get_playlist(bg_playlist_id)
+
+        if self.__session.viewport.source_frame_lock == 0:
+            fg_clips = list(map(lambda clip_id: self.__session.get_clip(clip_id), fg_playlist.active_clip_ids))
+            bg_clips = list(map(lambda clip_id: self.__session.get_clip(clip_id), bg_playlist.active_clip_ids))
+            fg_playlist_len = sum(len(clip.get_source_frames()) for clip in fg_clips)
+            bg_playlist_len = sum(len(clip.get_source_frames()) for clip in bg_clips)
+            if fg_playlist_len - bg_playlist_len < 0:
+                # trim to have fg and bg the same length
+                total = fg_playlist_len
+                i = 0
+                while total > 0:
+                    bg_clip = bg_clips[i]
+                    total -= len(bg_clip.get_source_frames())
+                    i += 1
+                source_frames = bg_clip.get_source_frames() if bg_clip else []
+                self.__set_bg_sync_retime_node(bg_playlist.active_clip_ids[i-1], source_frames[:total])
+                bg_playlist.set_active_clips(bg_playlist.clip_ids[:i])
+                self.__update_clip_nodes_in_playlist_node(
+                    self.__session.get_playlist(self.__session.viewport.bg))
+            else:
+                # if fg is longer, the bg should loop
+                pass
+        elif self.__session.viewport.source_frame_lock == 1:
+            self.__session.match_fg_bg_clip_indexes()
+            fg_clip_ids = fg_playlist.active_clip_ids
+            bg_clip_ids = bg_playlist.active_clip_ids
+            for fg_clip_id, bg_clip_id in zip(fg_clip_ids, bg_clip_ids):
+                fg_clip, bg_clip = self.__session.get_clip(fg_clip_id), self.__session.get_clip(bg_clip_id)
+                fg_frames, bg_frames = fg_clip.get_source_frames(), bg_clip.get_source_frames()
+                final_bg_frames = []
+                fg_i, bg_i = 0, 0
+                while fg_i < len(fg_frames):
+                    while fg_i < len(fg_frames) and fg_frames[fg_i] < bg_frames[bg_i]:
+                        final_bg_frames.append(bg_frames[bg_i])
+                        fg_i += 1
+                    while bg_i+1 < len(bg_frames) and fg_frames[fg_i] > bg_frames[bg_i]:
+                        bg_i += 1
+                    final_bg_frames.append(bg_frames[bg_i])
+                    fg_i = fg_i+1
+                    if bg_i+1 < len(bg_frames):
+                        bg_i+=1
+                self.__set_bg_sync_retime_node(bg_clip_id, final_bg_frames)
+
+    def __set_bg_sync_retime_node(self, clip_id, source_frames):
+        clip = self.__session.get_clip(clip_id)
+        if not clip: return
+
+        bg_sync_retime = clip.get_custom_attr("rv_bg_sync_retime")
+        commands.setIntProperty(
+            f"{bg_sync_retime}.explicit.firstOutputFrame", [source_frames[0]], True
+        )
+        commands.setIntProperty(
+                    f"{bg_sync_retime}.explicit.inputFrames", source_frames, True)
+
+        commands.setIntProperty(f"{bg_sync_retime}.explicit.active", [1], True)
+
+    def __reset_bg_sync_retime_nodes(self, playlist_id):
+        playlist = self.__session.get_playlist(playlist_id)
+        clip_ids = playlist.active_clip_ids
+        for clip_id in clip_ids:
+            clip = self.__session.get_clip(clip_id)
+            source_frames = clip.get_source_frames()
+            bg_sync_retime = clip.get_custom_attr("rv_bg_sync_retime")
+            commands.setIntProperty(
+                f"{bg_sync_retime}.explicit.firstOutputFrame", [source_frames[0]], True
+            )
+            commands.setIntProperty(
+                        f"{bg_sync_retime}.explicit.inputFrames", source_frames, True)
+
+            commands.setIntProperty(f"{bg_sync_retime}.explicit.active", [1], True)
+
+    def __get_retime_source_frames(self, clip_id):
+        clip = self.__session.get_clip(clip_id)
+        if not clip: return
+
+        bg_sync_retime = clip.get_custom_attr("rv_bg_sync_retime")
+        return commands.getIntProperty(
+            f"{bg_sync_retime}.explicit.inputFrames")
+
+    def check_fg_bg_sync(self):
+        OK = '\033[92m'
+        FAIL = '\033[91m'
+        END = '\033[0m'
+        PASSED = OK + "PASS" + END
+        FAILED = FAIL + "FAIL" + END
+        fg = self.__session.get_playlist(self.get_fg_playlist())
+        bg = self.__session.get_playlist(self.get_bg_playlist())
+        print(f'INFO: viewport frame lock: {self.__session.viewport.source_frame_lock}')
+        if self.__session.viewport.source_frame_lock:
+            print(f'INFO: source frame lock enabled')
+            fg_active_clip_ids = fg.active_clip_ids
+            bg_active_clips_ids =  bg.active_clip_ids
+            fg_n, bg_n = len(fg_active_clip_ids), len(bg_active_clips_ids)
+            print(f'INFO: testing for the same amount of clips')
+            print(f'INFO: {bg_active_clips_ids=} {fg_active_clip_ids=} {PASSED if fg_n==bg_n else FAILED}')
+            for fg_clip_id, bg_clip_id in zip(fg_active_clip_ids, bg_active_clips_ids):
+                fg_clip, bg_clip = self.__session.get_clip(fg_clip_id), self.__session.get_clip(bg_clip_id)
+                fg_frames, bg_frames = fg_clip.get_source_frames(), bg_clip.get_source_frames()
+                fg_retime_frames, bg_retime_frames = self.__get_retime_source_frames(fg_clip_id), self.__get_retime_source_frames(bg_clip_id)
+                print(f'INFO: testing for the same length per clip')
+                print(f'INFO: {len(fg_frames) = } {len(bg_retime_frames)=} {PASSED if len(fg_frames) == len(bg_retime_frames) else FAILED}')
+                if fg_frames[0] > bg_frames[0]:
+                    print(f'INFO: first frames differed. Testing if changed')
+                    print(f"INFO: {fg_frames[0]=} {bg_retime_frames[0]=} {PASSED if fg_frames[0] == bg_retime_frames[0] else FAILED}")
+                if fg_frames[-1] < bg_frames[-1]:
+                    print(f'INFO: last frames differed. Testing if changed')
+                    print(f"INFO: {fg_frames[-1]=} {bg_retime_frames[-1]=} {PASSED if fg_frames[-1] == bg_retime_frames[-1] else FAILED}")
+        else:
+            print(f'INFO: testing for the BG to be at most of the length of FG')
+            fg_clips = list(map(lambda clip_id: self.__session.get_clip(clip_id), fg.active_clip_ids))
+            bg_clips = list(map(lambda clip_id: self.__session.get_clip(clip_id), bg.active_clip_ids))
+            fg_playlist_len = sum(len(clip.get_source_frames()) for clip in fg_clips)
+            bg_playlist_len = sum(len(clip.get_source_frames()) for clip in bg_clips[:-1])
+            bg_playlist_len += len(self.__get_retime_source_frames(bg.active_clip_ids[-1]))
+            print(f'INFO: {fg.active_clip_ids=} {bg.active_clip_ids=}')
+            print(f"INFO: {fg_playlist_len=} {bg_playlist_len=} {PASSED if bg_playlist_len <= fg_playlist_len else FAILED}")
 
     def move_playlists_to_index(self, index, ids):
         self.__session.move_playlists_to_index(index, ids)
@@ -245,12 +379,12 @@ class SessionApiCore(QtCore.QObject):
         return value
 
     def create_clips(self, playlist_id, paths, index, ids):
-        for id in ids:
-            if self.__session.get_clip(id) is None:
-                continue
-            else:
-                print("A Clip with one of the given id already exists!", id)
-                return []
+        # for id in ids:
+        #     if self.__session.get_clip(id) is None:
+        #         continue
+        #     else:
+        #         print("A Clip with one of the given id already exists!", id)
+        #         return []
         num_of_clips_to_create = len(paths)
         if num_of_clips_to_create == 0:
             return []
@@ -472,8 +606,10 @@ class SessionApiCore(QtCore.QObject):
     def __create_clip_nodes(self, id, path):
         clip = self.__session.get_clip(id)
 
-        if isinstance(path, list) and len(path) > 1:
-            if path[1] == "":
+        if (isinstance(path, list) or isinstance(path, tuple)) and len(path) > 1:
+            if len(path) > 2:
+                path = list(path[:2])
+            if not path[1]: # no audio path
                 path = path[0]
         if isinstance(path, str):
             path = [path]
@@ -491,6 +627,8 @@ class SessionApiCore(QtCore.QObject):
         prop_util.set_property(f"{source_group}.custom.rpa_clip_id", [id])
         prop_util.set_property(f"{source_group}.custom.has_frame_edits", [0])
         clip.set_custom_attr("rv_source_group", source_group)
+        if isinstance(path, list):
+            self.__check_and_set_audio(source)
 
         # Get the downstream connections before we modify the graph
         _, downstream = commands.nodeConnections(source_group, False)
@@ -521,10 +659,15 @@ class SessionApiCore(QtCore.QObject):
         retime = commands.newNode("RVRetime", f"{source_group}_retime")
         clip.set_custom_attr("rv_retime", retime)
 
-        # Set up the node chain: source_group -> placeholder_transform_parent -> ro_paint_node -> retime_node
+        # Create retime node for BG sync
+        bg_sync_retime = commands.newNode("RVRetime", f"{source_group}_bg_sync_retime")
+        clip.set_custom_attr("rv_bg_sync_retime", bg_sync_retime)
+
+        # Set up the node chain: source_group -> placeholder_transform_parent -> ro_paint_node -> retime_node -> bg_sync_retime
         commands.setNodeInputs(retime, [ro_paint])
+        commands.setNodeInputs(bg_sync_retime, [retime])
         secondary_transform = commands.newNode("RVTransform2D", f"{source_group}_secondary_transform")
-        commands.setNodeInputs(secondary_transform, [retime])
+        commands.setNodeInputs(secondary_transform, [bg_sync_retime])
         clip.set_custom_attr("rv_secondary_transform", secondary_transform)
         prop_util.set_property(f"{source_group}.custom.secondary_transform", [secondary_transform])
 
@@ -545,6 +688,24 @@ class SessionApiCore(QtCore.QObject):
 
         # Always restore the original cache mode.
         commands.setCacheMode(cache_mode)
+
+    def __check_and_set_audio(self, source:str):
+        smis = commands.sourceMediaInfoList(source)
+        if len(smis) == 2:
+            both_with_video = all(smi.get("hasVideo") for smi in smis)
+            both_with_audio = all(smi.get("hasAudio") for smi in smis)
+
+            has_video = [smi.get("hasVideo") for smi in smis]
+            has_audio = [smi.get("hasAudio") for smi in smis]
+
+            if both_with_audio and has_video.count(True) == 1:
+                commands.setIntProperty(
+                    f"{source}.group.noMovieAudio", [1])
+
+            if both_with_video and \
+                (both_with_audio or has_audio.count(True) == 1):
+                commands.setIntProperty(
+                    f"{source}.group.noMovieAudio", [0])
 
     def __get_attr_values(
         self, clip_ids:List[str], attr_ids:List[str]):
@@ -594,12 +755,21 @@ class SessionApiCore(QtCore.QObject):
     def __update_current_clip(self):
         clip_frames =self.__session.timeline.get_clip_frames([commands.frame()])
         if len(clip_frames) != 1: return
-        clip_id, _, _ = clip_frames[0]
+        clip_frame = clip_frames[0]
+        if clip_frame is None: return
+        clip_id = clip_frame[0]
 
         if self.__session.viewport.current_clip != clip_id:
             self.__session.viewport.current_clip = clip_id
             self.__set_custom_fps(clip_id)
             self.SIG_CURRENT_CLIP_CHANGED.emit(clip_id)
+
+    def __toggle_bg_sync_retime(self, playlist_id, enable):
+        clips = [self.__session.get_clip(clip_id) for clip_id in self.__session.get_playlist(playlist_id).clip_ids]
+        for clip in clips:
+            if not clip: continue
+            bg_sync_retime = clip.get_custom_attr("rv_bg_sync_retime")
+            commands.setIntProperty(f"{bg_sync_retime}.explicit.active", [1 if enable else 0], True)
 
     def _frame_changed(self):
         self.__update_current_clip()
@@ -747,6 +917,14 @@ class SessionApiCore(QtCore.QObject):
         prop_util.set_property("defaultLayout.layout.mode", ["row"])
         commands.setViewNode(view)
 
+    def set_source_frame_lock(self, enable_source_lock):
+        self.__session.viewport.source_frame_lock = enable_source_lock
+        self.__reset_bg_sync_retime_nodes(self.__session.viewport.bg)
+        self.__update_bg_retime_node(self.__session.viewport.bg)
+
+    def get_source_frame_lock(self):
+        return self.__session.viewport.source_frame_lock
+
     def set_mix_mode(self, mode):
         if self.__session.viewport.mix_mode == mode:
             return
@@ -781,13 +959,6 @@ class SessionApiCore(QtCore.QObject):
 
     def get_mix_mode(self):
         return self.__session.viewport.mix_mode
-
-    # def __update_clip_nodes_in_playlist_node(self, playlist):
-    #     clip_nodes = [self.__session.get_clip(clip_id).\
-    #         get_custom_attr("rv_secondary_transform") \
-    #         for clip_id in playlist.active_clip_ids]
-    #     playlist_node = playlist.get_custom_attr("rv_sequence_group")
-    #     commands.setNodeInputs(playlist_node, clip_nodes)
 
     def __is_clip_cross_dissolve_active(self, clip):
         """Check if a clip has an active cross-dissolve transition."""
@@ -1154,6 +1325,16 @@ class SessionApiCore(QtCore.QObject):
         self.__emit_timewarp_modified_signal(clip.playlist_id, clip_id)
         return True
 
+    def set_source_frames(self, clip_id, source_frames):
+        clip = self.__session.get_clip(clip_id)
+        if not clip: return
+
+        clip.set_source_frames(source_frames)
+        self.__update_retime_node(clip_id)
+
+        self.SIG_PLAYLIST_MODIFIED.emit(clip.playlist_id)
+        return True
+
     def are_frame_edits_allowed(self, clip_id):
         clip = self.__session.get_clip(clip_id)
         if not clip:
@@ -1191,3 +1372,104 @@ class SessionApiCore(QtCore.QObject):
 
     def set_timeline_api(self, timeline_api):
         self.__timeline_api = timeline_api
+
+    def set_media_overlay(self, clip_id, overlay_type, overlay_data, overlay_id):
+        clip = self.__session.get_clip(clip_id)
+        if clip is None: return
+
+        source_group = clip.get_custom_attr("rv_source_group")
+        src_overlay_node = f"{source_group}_overlay"
+        src_node = f"{source_group}_source"
+        smi = commands.sourceMediaInfo(src_node)
+        width, height = smi.get("width"), smi.get("height")
+
+        if overlay_type == 1: # text
+            ol_type = OverlayType.text
+            media_overlay = TextOverlay.from_json(overlay_data)
+            text = media_overlay.text
+            font_path = media_overlay.font_path
+            text_size = image_to_rv(width, height, media_overlay.size)
+            text_red, text_green, text_blue, text_alpha = media_overlay.color
+            pos_x, pos_y = media_overlay.position
+            text_pos_x, text_pos_y = itview_to_rv(width, height, pos_x, pos_y)
+
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.text", [text])
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.font", [font_path])
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.size", [text_size])
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.color",
+                [[text_red, text_green, text_blue, text_alpha]])
+            # origin at this position
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.position",
+                [[text_pos_x, text_pos_y]])
+
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.origin", ["center-center"])
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.scale", [1.0])
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.spacing", [0.8])
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.active", [1])
+            clip.set_media_overlay_info(overlay_id, overlay_type, overlay_data)
+            return overlay_id
+
+        elif overlay_type == 2: # rect
+            ol_type = OverlayType.rect
+            media_overlay = RectOverlay.from_json(overlay_data)
+            rect_width = (media_overlay.width / width) * (width/height)
+            rect_height = (media_overlay.height / height)
+            rect_red, rect_green, rect_blue, rect_alpha = media_overlay.color
+            pos_x, pos_y = media_overlay.position
+            rect_pos_x, rect_pos_y = itview_to_rv(width, height, pos_x, pos_y)
+
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.width", [rect_width])
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.height", [rect_height])
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.color",
+                [[rect_red, rect_green, rect_blue, rect_alpha]])
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.position",
+                [[rect_pos_x, rect_pos_y]])
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.active", [1])
+            clip.set_media_overlay_info(overlay_id, overlay_type, overlay_data)
+            return overlay_id
+
+        else:
+            return None
+
+    def toggle_media_overlay(self, clip_id, overlay_id, overlay_type, active):
+        clip = self.__session.get_clip(clip_id)
+        if clip is None: return
+        source_group = clip.get_custom_attr("rv_source_group")
+        src_overlay_node = f"{source_group}_overlay"
+        src_node = f"{source_group}_source"
+
+        if not isinstance(overlay_type, int): return
+
+        if overlay_type == 0:
+            prop_util.set_property(
+                f"{src_overlay_node}.overlay.show", [1 if active else 0])
+        elif overlay_type == 1: # text
+            ol_type = OverlayType.text
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.active", [1 if active else 0])
+        elif overlay_type == 2: # rect
+            ol_type = OverlayType.rect
+            prop_util.set_property(
+                f"{src_overlay_node}.{ol_type}:{overlay_id}.active", [1 if active else 0])
+        else:
+           return
+
+    def get_media_overlays_info(self, clip_id):
+        clip = self.__session.get_clip(clip_id)
+        if clip is None: return []
+
+        return clip.get_media_overlays_info()

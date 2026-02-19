@@ -12,6 +12,8 @@ class Feedback:
     are_clip_ccs_visible:bool = True
     are_frame_ccs_visible:bool = True
     are_region_ccs_visible:bool = True
+    annotation_ghosting:bool = False
+    annotation_holding:bool = False
 
 @dataclass
 class Transforms:
@@ -80,6 +82,7 @@ class Viewport:
         self.__bg = None
         self.current_clip = None
         self.bg_mode = 0
+        self.source_frame_lock = False
         self.mix_mode = 0
         self.feedback = Feedback()
         self.__transforms = Transforms()
@@ -95,6 +98,7 @@ class Viewport:
         self.__html_overlays = {}
         self.__opengl_overlays: dict[str, OpenGlOverlay] = {}
         self.__current_clip_geometry = None
+        self.mask = None
 
     def create_html_overlay(self, html_overlay_data):
         overlay_id = self.__overlay_uuid_generator.next_uuid()

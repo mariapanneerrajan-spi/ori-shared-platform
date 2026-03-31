@@ -1,7 +1,7 @@
 try:
     from PySide2 import QtCore, QtGui, QtWidgets
     from PySide2.QtWidgets import QAction
-except ImportError:
+except:
     from PySide6 import QtCore, QtGui, QtWidgets
     from PySide6.QtGui import QAction
 
@@ -24,6 +24,13 @@ class InteractiveModes(QtCore.QObject):
     def __create_actions(self):
         def set_interactive_mode(mode):
             self.__session_api.set_custom_session_attr(C.INTERACTIVE_MODE, mode)
+
+        self.__wipe_mode = QAction("Wipe")
+        self.__wipe_mode.setCheckable(True)
+        self.__wipe_mode.setIcon(
+            QtGui.QIcon(QtGui.QPixmap(":wipe128.png")))
+        self.__wipe_mode.toggled.connect(
+            lambda is_checked: set_interactive_mode(C.INTERACTIVE_MODE_WIPE if is_checked else None))
 
         self.__rectangle_mode = QAction("Rectangle")
         self.__rectangle_mode.setCheckable(True)
@@ -129,6 +136,10 @@ class InteractiveModes(QtCore.QObject):
         self.tool_bar.setWindowTitle("Interactive Toolbar")
         self.tool_bar.setObjectName(self.tool_bar.windowTitle())
 
+        self.tool_bar.addAction(self.__wipe_mode)
+
+        self.tool_bar.addSeparator()
+
         self.tool_bar.addAction(self.transform_mode)
         self.tool_bar.addAction(self.dynamic_transform_mode)
 
@@ -163,6 +174,10 @@ class InteractiveModes(QtCore.QObject):
             self.__update_interactive_mode(value)
 
     def __update_interactive_mode(self, mode):
+        if  self.__wipe_mode.isChecked() != (mode == C.INTERACTIVE_MODE_WIPE):
+            self.__wipe_mode.blockSignals(True)
+            self.__wipe_mode.toggle()
+            self.__wipe_mode.blockSignals(False)
         if  self.__rectangle_mode.isChecked() != (mode == C.INTERACTIVE_MODE_RECTANGLE):
             self.__rectangle_mode.blockSignals(True)
             self.__rectangle_mode.toggle()

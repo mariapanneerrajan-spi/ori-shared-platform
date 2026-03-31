@@ -15,6 +15,27 @@ INTERACTIVE_MODE_TEXT = "text"
 INTERACTIVE_MODE_HARD_ERASER = "hard_eraser"
 INTERACTIVE_MODE_SOFT_ERASER = "soft_eraser"
 INTERACTIVE_MODE_MOVE = "move"
+SHOW_COLOR_PICKER = "show_color_picker"
+ENABLE_EYE_DROPPER = "enable_eye_dropper"
+PICKED_COLOR = "picked_color"
+PEN_WIDTH = "pen_width"
+ERASER_WIDTH = "eraser_width"
 
 TIMELINE_SELECTED_KEYS = "selected_timeline_keys"
 MIME_TYPE_ANNOTATION_LIST = 'itview/annotations'
+
+ANNOTATION_COLORS = [(1.0, 1.0, 1.0),   # white
+                    (1.0, 0.0, 0.0),   # red
+                    (1.0, 0.5, 0.0),   # orange
+                    (1.0, 1.0, 0.0),   # yellow
+                    (0.0, 1.0, 0.0),   # spring-green
+                    (0.0, 0.5, 0.0),   # green
+                    (0.0, 0.25, 0.0),  # dark-green
+                    (0.0, 1.0, 1.0),   # cyan
+                    (0.0, 0.5, 1.0),   # deep-sky
+                    (0.0, 0.0, 1.0),   # blue
+                    (0.5, 0.0, 1.0),   # violet
+                    (1.0, 0.0, 1.0),   # red-violet
+                    (0.5, 0.0, 0.5),   # dark-magenta
+                    (0.0, 0.0, 0.0)]   # black
+

@@ -4,7 +4,7 @@ Controller for Color Corrector
 import numpy as np
 try:
     from PySide2 import QtCore, QtWidgets
-except ImportError:
+except:
     from PySide6 import QtCore, QtWidgets
 
 from rpa.session_state.utils import screen_to_itview
@@ -107,6 +107,9 @@ class Controller(QtCore.QObject):
     def tab_widget(self):
         return self.__view.tab_widget
 
+    def inject_footer_buttons(self, buttons:list):
+        self.__view.footer.inject_buttons(buttons)
+
     def __connect_footer_signals(self):
         footer = self.__view.footer
         footer.SIG_COPY_CLICKED.connect(self.__copy_clicked)
@@ -114,8 +117,6 @@ class Controller(QtCore.QObject):
         footer.SIG_MUTE_TAB_CLICKED.connect(self.__mute_tab)
         footer.SIG_MUTE_ALL_TABS_CLICKED.connect(self.__mute_all_tabs)
         footer.SIG_PRINT_CLICKED.connect(self.__print_clicked)
-        footer.SIG_EMAIL_ALL_CLICKED.connect(self.__email_all_clicked)
-        footer.SIG_PUBLISH_CLICKED.connect(self.__publish_clicked)
 
     def __connect_signals(self, tab):
         # Colortimer signals
@@ -265,66 +266,90 @@ class Controller(QtCore.QObject):
         return points
 
     def __copy_clicked(self):
-        self.__clipboard_cc = self.current_tab.id
+        self.__clipboard_cc = (self.current_clip, self.current_tab.id)
 
     def __paste_clicked(self):
         cc_id = self.current_tab.id
         self.__cc_api.clear_nodes(self.current_clip, cc_id)
-        nodes = self.__cc_api.get_nodes(self.current_clip, self.__clipboard_cc)
+        nodes = self.__cc_api.get_nodes(self.__clipboard_cc[0], self.__clipboard_cc[1])
         self.__cc_api.append_nodes(self.current_clip, cc_id, nodes)
 
     def __mute_tab(self):
-        if not self.current_tab: return
+        if not self.current_tab or not self.current_clip: return
         cc_id = self.current_tab.id
         clip_id = self.current_clip
         is_mute = self.__cc_api.is_mute(clip_id, cc_id)
         self.__cc_api.mute(clip_id, cc_id, not is_mute)
 
     def __mute_all_tabs(self):
+        if not self.current_clip: return
         clip_id = self.current_clip
         is_mute_all = self.__cc_api.is_mute_all(clip_id)
         self.__cc_api.mute_all(clip_id, not is_mute_all)
 
     def __print_clicked(self):
-        monitor_data = self.__clip_tab.monitor.get_dict()
-        relative_monitor_data = self.__clip_tab.relative_monitor.get_dict()
-        color_grade_data = self.__clip_tab.color_timer.get_dict()
+        all_tabs = self.tab_widget.get_tabs()
+        clip_tab = self.tab_widget.clip_tab
+        frame_tabs = [tab for tab in all_tabs if tab != clip_tab]
 
-        cc_string = "\nMonitor:"
-        for key in monitor_data:
-            cc_string += "\n\t{0} {1}".format(key, monitor_data[key])
-        cc_string += "\nRelative Clip Monitor:"
-        for key in relative_monitor_data:
-            cc_string += "\n\t{0} {1}".format(key, relative_monitor_data[key])
-        cc_string += "\nClip Color Grade:"
+        cc_string = ""
+        indent = "      "
 
-        frame_tab = self.__view.frame_tab
-        relative_monitor_data = frame_tab.relative_monitor.get_value_dict()
-        color_grade_data = frame_tab.color_timer.get_value_dict()
+        # Clip tab
+        clip_tab_name = clip_tab.name
+        c_nodes = clip_tab.nodes
+        if c_nodes:
+            cc_string += f"\n[{clip_tab_name}]"
+            color_timer, grade = c_nodes
+            color_timer_mute = color_timer.get_mute()
+            color_timer_values = color_timer.get_all()
+            grade_mute = grade.get_mute()
+            grade_values = grade.get_all()
+            cc_string += "\nColorTimer:"
+            cc_string += f"\n{indent}mute: {color_timer_mute}"
+            for color_knob, value in color_timer_values.items():
+                value_str = self.__convert_to_str(value)
+                cc_string += f"\n{indent}{color_knob}: {value_str}"
+            cc_string += "\nGrade:"
+            cc_string += f"\n{indent}mute: {grade_mute}"
+            for color_knob, value in grade_values.items():
+                value_str = self.__convert_to_str(value)
+                cc_string += f"\n{indent}{color_knob}: {value_str}"
 
-        cc_string += "\nRelative Frame Monitor:"
-        for key in relative_monitor_data:
-            cc_string += "\n\t{0} {1}".format(key, relative_monitor_data[key])
-        cc_string += "\nFrame Color Grade:"
+        # Frame tabs
+        for i, tab in enumerate(frame_tabs):
+            cc_string += f"\n[{tab.name}]"
+            f_region = tab.region
+            f_nodes = tab.nodes
+            if f_region:
+                falloff = f_region.get_falloff()
+                cc_string += "\nRegion:"
+                cc_string += f"\n{indent}Falloff: {falloff}"
+            if f_nodes:
+                color_timer, grade = f_nodes
+                color_timer_mute = color_timer.get_mute()
+                color_timer_values = color_timer.get_all()
+                grade_mute = grade.get_mute()
+                grade_values = grade.get_all()
+                cc_string += "\nColorTimer:"
+                cc_string += f"\n{indent}mute: {color_timer_mute}"
+                for color_knob, value in color_timer_values.items():
+                    value_str = self.__convert_to_str(value)
+                    cc_string += f"\n{indent}{color_knob}: {value_str}"
+                cc_string += "\nGrade:"
+                cc_string += f"\n{indent}mute: {grade_mute}"
+                for color_knob, value in grade_values.items():
+                    value_str = self.__convert_to_str(value)
+                    cc_string += f"\n{indent}{color_knob}: {value_str}"
 
-        for index in range(self.tab_widget.count()):
-            tab_text = self.tab_widget.tabText(index)
-            if tab_text != "+" and index >= 2:
-                widget = self.tab_widget.widget(index)
-                cc_string += "\n{0} :".format(tab_text)
-                cc_string += "\n\tRelative Region Monitor:"
-                rel_monitor = widget.relative_monitor.get_value_dict()
-                for key in rel_monitor:
-                    cc_string += "\n\t\t{0} {1}".format(key, rel_monitor[key])
-
-                cc_string += "\n\tRegion Color Grade:"
         print(cc_string)
 
-    def __email_all_clicked(self):
-        print("Email all clicked")
-
-    def __publish_clicked(self):
-        print("Publish")
+    def __convert_to_str(self, value):
+        if isinstance(value, list):
+            value_str = ' '.join(str(v) for v in value)
+        else:
+            value_str = str(value)
+        return value_str
 
     def __create_colortimer(self, cc_id):
         clip_id = self.__session_api.get_current_clip()
@@ -440,6 +465,9 @@ class Controller(QtCore.QObject):
     # Session playback modified
     @QtCore.Slot(str)
     def __current_clip_changed(self, clip_id):
+        if clip_id is None:
+            self.__delete_tabs(del_clip_tab=True)
+            return
         playing, _ = self.__timeline_api.get_playing_state()
         if playing: return
         self.__delete_tabs()
@@ -451,8 +479,11 @@ class Controller(QtCore.QObject):
         scrubbing = self.__session_api.get_custom_session_attr("is_timeline_scrubbing")
         if playing or scrubbing:
             return
-        widget = QtWidgets.QApplication.focusWidget()
+        # widget = QtWidgets.QApplication.focusWidget()
         clip_id = self.__session_api.get_current_clip()
+        if clip_id is None:
+            self.__delete_tabs(del_clip_tab=True)
+            return
         self.__delete_tabs()
         self.__ccs_modified(clip_id)
 
@@ -520,11 +551,11 @@ class Controller(QtCore.QObject):
         if not tab: return
         tab.set_node_values(node_index, node)
 
-    def __delete_tabs(self):
+    def __delete_tabs(self, del_clip_tab=False):
         for tab in self.tab_widget.get_tabs():
             if tab == self.tab_widget.clip_tab: continue
             self.__disconnect_signals(tab)
-        self.tab_widget.clear_all_tabs()
+        self.tab_widget.clear_all_tabs(del_clip_tab=del_clip_tab)
 
     def __region_modified(self, clip_id, cc_id):
         tab = self.tab_widget.get_tab(cc_id)

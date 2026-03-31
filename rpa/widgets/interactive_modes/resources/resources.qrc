@@ -9,5 +9,6 @@
         <file>./hand.png</file>
         <file>./transforms.png</file>
         <file>./transforms_dynamic.png</file>
+        <file>./wipe128.png</file>
     </qresource>
 </RCC>

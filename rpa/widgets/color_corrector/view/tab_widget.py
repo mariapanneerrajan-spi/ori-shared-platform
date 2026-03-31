@@ -1,6 +1,6 @@
 try:
     from PySide2 import QtCore, QtGui, QtWidgets
-except ImportError:
+except:
     from PySide6 import QtCore, QtGui, QtWidgets
 from rpa.widgets.color_corrector.view.color_corrector import ColorCorrectionAndGrading
 import rpa.widgets.color_corrector.view.resources.resources
@@ -143,7 +143,7 @@ class ColorCorrectorTabWidget(QtWidgets.QTabWidget):
         self.setCurrentIndex(index-1)
         self.removeTab(index)
 
-    def clear_all_tabs(self):
+    def clear_all_tabs(self, del_clip_tab=False):
         self.setCurrentIndex(0)
         # We block the signals so we don't end up unnecessarily emitting
         # currentChanged signal on removeTab.
@@ -157,9 +157,10 @@ class ColorCorrectorTabWidget(QtWidgets.QTabWidget):
         self.blockSignals(False)
         self.__tabs.clear()
         # We always retain the clip tab.
-        self.__tabs.append(self.__clip_tab)
+        if del_clip_tab is False:
+            self.__tabs.append(self.__clip_tab)
+            self.tabBar().set_clip_tab_count(1)
         self.update_clip_tab(None)
-        self.tabBar().set_clip_tab_count(1)
 
     def lock(self, tab):
         index = self.indexOf(tab)

@@ -1,7 +1,7 @@
 try:
     from PySide2 import QtGui, QtCore, QtWidgets
     from PySide2.QtWidgets import QAction, QActionGroup
-except ImportError:
+except:
     from PySide6 import QtGui, QtCore, QtWidgets
     from PySide6.QtGui import QAction, QActionGroup
 
@@ -11,9 +11,6 @@ class Actions(QtCore.QObject):
 
         self.turn_off_background = QAction("Turn Off Background")
         self.turn_off_background.setShortcut(QtGui.QKeySequence("Alt+D"))
-
-        self.wipe = QAction("Wipe Mode") # TODO: move to interactive toolbar once added
-        self.wipe.setCheckable(True)
 
         self.pip = QAction("Picture in Picture", parent=self)
         self.pip.setCheckable(True)
@@ -62,3 +59,16 @@ class Actions(QtCore.QObject):
         mix_mode_action_group.addAction(self.sub_mix_mode)
         mix_mode_action_group.addAction(self.over_mix_mode)
         mix_mode_action_group.setExclusionPolicy(QActionGroup.ExclusionPolicy.Exclusive)
+
+        self.frame_lock = QAction("Frame Lock", parent=self)
+        self.frame_lock.setCheckable(True)
+        self.frame_lock.setChecked(True)
+        self.source_frame_lock = QAction("Source Frame", parent=self)
+        self.source_frame_lock.setCheckable(True)
+
+        sync_modes_action_group = QActionGroup(self)
+        sync_modes_action_group.addAction(self.frame_lock)
+        sync_modes_action_group.addAction(self.source_frame_lock)
+        sync_modes_action_group.setExclusionPolicy(QActionGroup.ExclusionPolicy.Exclusive)
+
+        self.sync_mode_check = QAction("Check for BG sync", parent=self)

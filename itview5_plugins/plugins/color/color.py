@@ -276,7 +276,7 @@ class Color(QtCore.QObject):
         # Channel Order
         self.__channel_order_action_grp = QtWidgets.QActionGroup(self)
         predefined_orders = [
-            "RGBA", "RBGA", "GBRA", "GRBA", "BRGA", "BGRA", 
+            "RGBA", "RBGA", "GBRA", "GRBA", "BRGA", "BGRA",
             "ABGR", "ARGB", "R00A", "0G0A", "00BA"
         ]
         # Generate predefined actions
@@ -287,7 +287,7 @@ class Color(QtCore.QObject):
                 action.setChecked(True)
             action.SIG_TRIGGERED.connect(lambda order: self.__set_channel_order(order))
             self.__channel_order_action_grp.addAction(action)
-        
+
         self.__custom_channel_order_action = QtWidgets.QAction("Custom...", self)
         self.__custom_channel_order_action.setCheckable(True)
         self.__custom_channel_order_action.triggered.connect(self.__open_custom_dialog)

@@ -77,7 +77,7 @@ class ContextMenu(QtWidgets.QMenu):
             clear_color.setShortcut("Shift+X")
 
             cut.triggered.connect(self.SIG_CUT)
-            copy.triggered.connect(self.SIG_COPY)            
+            copy.triggered.connect(self.SIG_COPY)
             delete_permanently.triggered.connect(self.SIG_DELETE_PERMANENTLY)
             move_top.triggered.connect(self.SIG_MOVE_TOP)
             move_up.triggered.connect(self.SIG_MOVE_UP)
@@ -136,7 +136,7 @@ class ContextMenu(QtWidgets.QMenu):
                         self.insertAction(target_action, action)
                     else:
                         self.addAction(action)
-                    
+
                     new_action_id = action.property("action_id")
                     if new_action_id:
                         action_map[new_action_id] = action

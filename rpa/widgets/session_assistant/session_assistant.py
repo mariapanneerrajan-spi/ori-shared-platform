@@ -28,6 +28,9 @@ class SessionAssistant(QtCore.QObject):
         self.goto_prev_clip_action = QAction("Prev Clip (Same Frame)")
         self.goto_next_clip_action = QAction("Next Clip (Same Frame)")
 
+        self.goto_prev_clip_action = QAction("Prev Clip (Same Frame)")
+        self.goto_next_clip_action = QAction("Next Clip (Same Frame)")
+
         self.__actions = [self.prev_playlist_action,
                           self.next_playlist_action,
                           self.prev_clip_action,

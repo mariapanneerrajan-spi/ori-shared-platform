@@ -27,4 +27,4 @@ class ItviewColorCorrector(QtCore.QObject):
         review_menu = self.__main_window.get_menu("Review")
         review_menu.addSeparator()
         review_menu.addAction(self.__toggle_action)
-        review_menu.addSeparator()   
+        review_menu.addSeparator()

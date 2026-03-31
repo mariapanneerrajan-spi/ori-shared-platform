@@ -26,4 +26,3 @@ class RpaInterpreter(QtCore.QObject):
         help_menu = self.__main_window.get_menu("Help")
         help_menu.addSeparator()
         help_menu.addAction(self.__toggle_action)
-

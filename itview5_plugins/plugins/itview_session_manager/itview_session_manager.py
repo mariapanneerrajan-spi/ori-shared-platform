@@ -45,7 +45,7 @@ class ItviewSessionManager(QtCore.QObject):
         self.__main_window.destroyed.connect(
             self.__session_manager.save_preferences)
         self.__settings_api.SIG_SETTINGS_CHANGED.connect(self.__setting_changed)
-    
+
         self.__load_preferences()
 
     def __setting_changed(self, setting_id:str, value: Any):
@@ -69,7 +69,7 @@ class ItviewSessionManager(QtCore.QObject):
         self.__config_api.endGroup()
 
         self.__settings_api.set_value(
-            f"{Pref.PLUGIN}.{Pref.CONTROL}/{Pref.CURRENT_FRAME_MODE}", 
+            f"{Pref.PLUGIN}.{Pref.CONTROL}/{Pref.CURRENT_FRAME_MODE}",
             current_frame_mode)
         self.__settings_api.set_value(
             f"{Pref.PLUGIN}.{Pref.CONTROL}/{Pref.AUTO_RENAME}",
@@ -78,7 +78,7 @@ class ItviewSessionManager(QtCore.QObject):
     def __save_preferences(self):
         self.__config_api.beginGroup(Pref.PLUGIN)
 
-        self.__config_api.beginGroup(Pref.CONTROL)    
+        self.__config_api.beginGroup(Pref.CONTROL)
         current_frame_mode = self.__settings_api.get_value(
             f"{Pref.PLUGIN}.{Pref.CONTROL}/{Pref.CURRENT_FRAME_MODE}")
         auto_rename = self.__settings_api.get_value(

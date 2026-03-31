@@ -206,7 +206,6 @@ class ViewportApiCore(QtCore.QObject):
     def create_html_overlay(self, html_overlay):
         id = self.__session.viewport.create_html_overlay(html_overlay)
         html_overlay = self.__session.viewport.get_html_overlay(id)
-        self.__set_html_overlay_texture(id, html_overlay)
         return id
 
     def set_html_overlay(self, id:str, html_overlay, opacity=1.0):

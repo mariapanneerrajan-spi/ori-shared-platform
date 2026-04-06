@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+# Launch ITView (dev mode)
+#
+# Sets up PYTHONPATH for source imports and RV_SUPPORT_PATH
+# for locally-installed rvpkgs, then starts OpenRV.
+#
+# Requires RV_HOME to be set to your OpenRV installation directory.
+#
+
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+
+if [ -z "$RV_HOME" ]; then
+    echo "ERROR: RV_HOME is not set."
+    echo "Set it to your OpenRV installation directory:"
+    echo "  export RV_HOME=/path/to/OpenRV"
+    exit 1
+fi
+
+if [ ! -d "$SCRIPT_DIR/local_install/lib/open_rv/Packages" ]; then
+    echo "ERROR: local_install not found. Run 'python dev_setup.py build' first."
+    exit 1
+fi
+
+# Python modules importable directly from source
+export PYTHONPATH="$SCRIPT_DIR:$PYTHONPATH"
+
+# RV packages installed by dev_setup.py
+export RV_SUPPORT_PATH="$SCRIPT_DIR/local_install/lib/open_rv"
+
+# Plugin config
+export ITVIEW5_CORE_PLUGINS_CONFIG="$SCRIPT_DIR/itview5_plugins/open_itview5_plugins.cfg"
+
+# Qt settings
+export QT_LOGGING_RULES="*=false;qt.core.critical=true;qt.core.fatal=true"
+export QTWEBENGINE_DISABLE_SANDBOX=1
+
+exec "$RV_HOME/bin/rv" "$@"

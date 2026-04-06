@@ -1,5 +1,8 @@
 import os
-import OpenImageIO as oiio
+try:
+    import OpenImageIO as oiio
+except ImportError:
+    oiio = None
 from dataclasses import dataclass
 from PySide2 import QtCore, QtGui, QtWidgets
 from mask.actions import Actions
@@ -213,7 +216,7 @@ class MaskPlugin:
             mask = action.data()
             if mask.content is None:
                 continue
-            if os.path.exists(mask.content):
+            if os.path.exists(mask.content) and oiio is not None:
                 image_input = oiio.ImageInput.open(mask.content)
                 mask_w = image_input.spec().width
                 mask_h = image_input.spec().height

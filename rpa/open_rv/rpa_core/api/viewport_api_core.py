@@ -16,7 +16,10 @@ from rv import extra_commands as rve
 from rv import runtime
 from rpa.open_rv.rpa_core.api import prop_util
 from rpa.session_state.utils import Point, itview_to_screen
-from playwright.async_api import async_playwright
+try:
+    from playwright.async_api import async_playwright
+except ImportError:
+    async_playwright = None
 
 
 def render_html_to_image(html, opacity):
@@ -135,6 +138,11 @@ class PlaywrightRenderer(QtCore.QObject):
             self.__last_future = asyncio.run_coroutine_threadsafe(self.render_async(html_overlay), self.__async_loop)
 
     async def render_async(self, html_overlay):
+        if async_playwright is None:
+            raise ImportError(
+                "playwright is required for HTML overlay rendering. "
+                "Install it with: pip install playwright && playwright install chromium"
+            )
         if self.__playwright is None:
             self.__playwright = await async_playwright().start()
         if self.__browser is None:

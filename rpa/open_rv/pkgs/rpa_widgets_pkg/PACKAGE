@@ -5,7 +5,7 @@ version: 1.0
 requires: ''
 rv: 3.12.9
 openrv: 1.0.0
-optional: true
+optional: false
 
 modes:
   - file: rpa_widgets_mode.py

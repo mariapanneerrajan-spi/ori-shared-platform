@@ -12,7 +12,10 @@ from rpa.open_rv.rpa_core.api.clip_attr_api_core.clip_attr_api_core \
 from rpa.open_rv.rpa_core.api.utils import image_to_rv, itview_to_rv
 from rpa.utils.rv_overlays import OverlayType, RectOverlay, TextOverlay
 from rpa.session_state.session import Session
-from pymu import MuSymbol
+try:
+    from pymu import MuSymbol
+except ImportError:
+    MuSymbol = None
 
 
 class SessionApiCore(QtCore.QObject):

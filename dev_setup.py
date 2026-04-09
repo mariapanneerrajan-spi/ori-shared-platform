@@ -7,13 +7,13 @@ Builds OpenRV packages (.rvpkg), installs them locally,
 and installs Python dependencies into OpenRV's Python.
 
 Usage:
-    python dev_setup.py build          # Build + install rvpkgs
+    python dev_setup.py build          # Build + install rvpkgs (no RV_HOME needed)
     python dev_setup.py install-deps   # Install Python deps into OpenRV Python
     python dev_setup.py all            # Both (default)
     python dev_setup.py clean          # Remove local_install/
 
-Requires RV_HOME environment variable (or --rv-home flag)
-pointing to your OpenRV installation directory.
+RV_HOME environment variable (or --rv-home flag) is required for
+install-deps and all commands (not needed for build-only).
 """
 
 import argparse
@@ -46,18 +46,6 @@ def find_rv_home(override=None):
         sys.exit(1)
     return rv_home
 
-
-def find_rvpkg(rv_home):
-    if platform.system() == "Windows":
-        candidates = [rv_home / "bin" / "rvpkg.exe", rv_home / "bin" / "rvpkg"]
-    else:
-        candidates = [rv_home / "bin" / "rvpkg"]
-    for c in candidates:
-        if c.is_file():
-            return c
-    print(f"ERROR: rvpkg not found in {rv_home / 'bin'}")
-    print("Searched:", [str(c) for c in candidates])
-    sys.exit(1)
 
 
 def find_rv_python(rv_home):
@@ -113,71 +101,148 @@ def build_rvpkg_rpa_widgets(output_dir):
     return pkg_path
 
 
-def build_rvpkg_node_graph_editor(output_dir):
-    """Build node_graph_editor-1.0.rvpkg from source files."""
-    pkg_dir = ROOT_DIR / "rpa" / "open_rv" / "pkgs" / "node_graph_editor"
-    pkg_path = output_dir / "node_graph_editor-1.0.rvpkg"
-
-    with zipfile.ZipFile(pkg_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.write(pkg_dir / "PACKAGE", "PACKAGE")
-        zf.write(pkg_dir / "node_graph_editor_mode.py", "node_graph_editor_mode.py")
-
-    print(f"  Built {pkg_path.name}")
-    return pkg_path
-
-
 # ---------------------------------------------------------------------------
-# Install rvpkg via rvpkg CLI
+# Install rvpkg files and generate rvload2
 # ---------------------------------------------------------------------------
 
-def run_rvpkg(rvpkg_exe, args, check=True):
-    """Run an rvpkg command, optionally ignoring errors."""
-    cmd = [str(rvpkg_exe)] + [str(a) for a in args]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if check and result.returncode != 0:
-        print(f"  FAILED: {' '.join(cmd)}")
-        if result.stdout:
-            print(f"    stdout: {result.stdout.strip()}")
-        if result.stderr:
-            print(f"    stderr: {result.stderr.strip()}")
-        sys.exit(1)
-    return result
+def parse_package_manifest(pkg_path):
+    """Parse a PACKAGE manifest from inside an .rvpkg zip.
+
+    Returns a dict with keys: rv, openrv, optional, modes.
+    Each mode has: file, menu, shortcut, event, load.
+    """
+    with zipfile.ZipFile(pkg_path, "r") as zf:
+        text = zf.read("PACKAGE").decode("utf-8")
+
+    pkg = {"rv": "", "openrv": "", "optional": False, "modes": []}
+    current_mode = None
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+
+        # Top-level keys
+        if line and not line[0].isspace() and ":" in line:
+            key, _, val = line.partition(":")
+            key = key.strip()
+            val = val.strip().strip("'\"")
+            if key == "rv":
+                pkg["rv"] = val
+            elif key == "openrv":
+                pkg["openrv"] = val
+            elif key == "optional":
+                pkg["optional"] = val.lower() == "true"
+            elif key == "modes":
+                pass  # modes list follows
+            continue
+
+        # Mode entries (indented under modes:)
+        if stripped.startswith("- file:"):
+            current_mode = {
+                "file": stripped.split(":", 1)[1].strip().strip("'\""),
+                "menu": "",
+                "shortcut": "",
+                "event": "",
+                "load": "immediate",
+            }
+            pkg["modes"].append(current_mode)
+        elif current_mode and ":" in stripped:
+            key, _, val = stripped.partition(":")
+            key = key.strip()
+            val = val.strip().strip("'\"")
+            if key in current_mode:
+                current_mode[key] = val
+
+    return pkg
 
 
-def install_rvpkg(rvpkg_exe, support_path, pkg_file):
-    """Install a single .rvpkg into the support path."""
-    installed = support_path / "Packages" / pkg_file.name
+def generate_rvload2(support_path, pkg_files):
+    """Generate the Mu/rvload2 file so packages auto-load in OpenRV.
 
-    # Remove previous installation (ignore errors if not present)
-    run_rvpkg(rvpkg_exe, ["-uninstall", installed], check=False)
-    run_rvpkg(rvpkg_exe, ["-remove", installed], check=False)
+    The rvload2 format (version 4) is a CSV file:
+      Line 1: version number (4)
+      Subsequent lines: name,package,menu,shortcut,event,loaded,active,rvversion,optional,openrvversion
+    """
+    mu_dir = support_path / "Mu"
+    mu_dir.mkdir(parents=True, exist_ok=True)
 
-    # Install fresh
-    run_rvpkg(rvpkg_exe, ["-add", support_path, pkg_file])
-    run_rvpkg(rvpkg_exe, ["-install", installed])
-    run_rvpkg(rvpkg_exe, ["-optin", installed])
+    entries = []
+    for pkg_file in pkg_files:
+        manifest = parse_package_manifest(pkg_file)
+        for mode in manifest["modes"]:
+            # Strip .py/.mu extension to get mode name
+            name = mode["file"]
+            if name.endswith(".py") or name.endswith(".mu"):
+                name = name[:-3]
+
+            is_immediate = mode["load"] == "immediate"
+            menu = mode["menu"] if mode["menu"] else "nil"
+            shortcut = mode["shortcut"] if mode["shortcut"] else "nil"
+            event = mode["event"] if mode["event"] else "nil"
+
+            entry = (
+                f"{name},"
+                f"{pkg_file.name},"
+                f"{menu},"
+                f"{shortcut},"
+                f"{event},"
+                f"{'true' if is_immediate else 'false'},"
+                f"{'true' if is_immediate else 'false'},"
+                f"{manifest['rv']},"
+                f"{'true' if manifest['optional'] else 'false'},"
+                f"{manifest['openrv']}"
+            )
+            entries.append(entry)
+
+    rvload2_path = mu_dir / "rvload2"
+    rvload2_path.write_text("4\n" + "\n".join(entries) + "\n", encoding="utf-8")
+    print(f"  Generated rvload2 with {len(entries)} mode(s)")
+
+
+def install_rvpkg(support_path, pkg_file):
+    """Install a .rvpkg: copy the zip and extract contents to the right dirs.
+
+    Mirrors what OpenRV's rvpkg -install does:
+      .py  → Python/
+      .mu  → Mu/
+      .glsl/.gto → Nodes/
+      PACKAGE → skipped (stays in the zip)
+    """
+    # Copy the rvpkg zip into Packages/
+    dest = support_path / "Packages" / pkg_file.name
+    shutil.copy2(pkg_file, dest)
+
+    # Extract contents to appropriate directories
+    with zipfile.ZipFile(pkg_file, "r") as zf:
+        for member in zf.namelist():
+            if member == "PACKAGE":
+                continue
+
+            basename = Path(member).name
+            if member.endswith(".py"):
+                out_dir = support_path / "Python"
+            elif member.endswith((".mu", ".mud", ".muc")):
+                out_dir = support_path / "Mu"
+            elif member.endswith((".glsl", ".gto")):
+                out_dir = support_path / "Nodes"
+            else:
+                pkg_name = pkg_file.stem.rsplit("-", 1)[0]  # e.g. rpa_core
+                out_dir = support_path / "SupportFiles" / pkg_name
+
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_path = out_dir / basename
+            out_path.write_bytes(zf.read(member))
 
     print(f"  Installed {pkg_file.name}")
-
-
-def install_node_graph_editor_python(support_path):
-    """Copy node_graph_editor Python subpackage to support path."""
-    src = ROOT_DIR / "rpa" / "open_rv" / "pkgs" / "node_graph_editor" / "node_graph_editor"
-    dst = support_path / "Python" / "node_graph_editor"
-    if dst.exists():
-        shutil.rmtree(dst)
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(src, dst)
-    print("  Copied node_graph_editor Python package")
 
 
 # ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
 
-def cmd_build(rv_home):
+def cmd_build():
     """Build and install all rvpkgs to local_install/."""
-    rvpkg_exe = find_rvpkg(rv_home)
     local_install = ROOT_DIR / "local_install"
     support_path = local_install / "lib" / "open_rv"
 
@@ -195,15 +260,14 @@ def cmd_build(rv_home):
     pkgs = [
         build_rvpkg_rpa_core(build_dir),
         build_rvpkg_rpa_widgets(build_dir),
-        build_rvpkg_node_graph_editor(build_dir),
     ]
 
     print("Installing rvpkg files...")
     for pkg in pkgs:
-        install_rvpkg(rvpkg_exe, support_path, pkg)
+        install_rvpkg(support_path, pkg)
 
-    # Copy node_graph_editor Python subpackage
-    install_node_graph_editor_python(support_path)
+    # Generate rvload2 so packages auto-load in OpenRV
+    generate_rvload2(support_path, [support_path / "Packages" / p.name for p in pkgs])
 
     # Clean temp build directory
     shutil.rmtree(build_dir)
@@ -211,9 +275,40 @@ def cmd_build(rv_home):
     print(f"\nBuild complete. RV_SUPPORT_PATH: {support_path}")
 
 
+def _snapshot_rv_packages(rv_python):
+    """Capture OpenRV's existing packages as a pip constraints file.
+
+    Returns the path to a temporary constraints file that pins every
+    pre-installed package to its current version, preventing pip from
+    upgrading (or downgrading) any of them.
+    """
+    constraints_path = ROOT_DIR / "local_install" / "_rv_constraints.txt"
+    constraints_path.parent.mkdir(parents=True, exist_ok=True)
+
+    result = subprocess.run(
+        [str(rv_python), "-m", "pip", "freeze"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        print("  WARNING: Could not snapshot OpenRV packages (pip freeze failed)")
+        return None
+
+    constraints_path.write_text(result.stdout, encoding="utf-8")
+    return constraints_path
+
+
 def cmd_install_deps(rv_home):
     """Install Python dependencies into OpenRV's Python."""
     rv_python = find_rv_python(rv_home)
+
+    # Snapshot existing OpenRV packages so pip never upgrades them
+    print("Snapshotting OpenRV's existing packages as constraints...")
+    constraints_file = _snapshot_rv_packages(rv_python)
+    if constraints_file:
+        print(f"  Constraints file: {constraints_file}")
+    else:
+        print("  WARNING: Proceeding without constraints — existing packages may be upgraded!")
 
     req_files = [
         ROOT_DIR / "rpa" / "build_scripts" / "requirements.txt",
@@ -224,11 +319,10 @@ def cmd_install_deps(rv_home):
     for req in req_files:
         if req.is_file():
             print(f"  Installing from {req.relative_to(ROOT_DIR)}...")
-            result = subprocess.run(
-                [str(rv_python), "-m", "pip", "install", "-r", str(req)],
-                capture_output=True,
-                text=True,
-            )
+            cmd = [str(rv_python), "-m", "pip", "install", "-r", str(req)]
+            if constraints_file:
+                cmd += ["-c", str(constraints_file)]
+            result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
                 print(f"  WARNING: pip install failed for {req.name}")
                 if result.stdout:
@@ -296,13 +390,12 @@ def main():
         cmd_clean()
         return
 
-    rv_home = find_rv_home(args.rv_home)
-    print(f"Using RV_HOME: {rv_home}")
-
     if args.command in ("build", "all"):
-        cmd_build(rv_home)
+        cmd_build()
 
     if args.command in ("install-deps", "all"):
+        rv_home = find_rv_home(args.rv_home)
+        print(f"Using RV_HOME: {rv_home}")
         cmd_install_deps(rv_home)
 
     print("\nDev setup complete!")

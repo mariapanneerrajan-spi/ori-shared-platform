@@ -24,6 +24,7 @@ class PlaylistsToolbar(QtWidgets.QToolBar):
         self.setObjectName("Session Manager Playlists Toolbar")
         self.setWindowTitle("Session Manager Playlists Toolbar")
         self.setOrientation(QtCore.Qt.Vertical)
+        self.setIconSize(QtCore.QSize(20, 20))
 
         make_icon = \
             lambda icon_name: QtGui.QIcon(QtGui.QPixmap(icon_name))

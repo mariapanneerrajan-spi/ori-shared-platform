@@ -97,6 +97,7 @@ class Transforms(QtCore.QObject):
         self.__main_window.addToolBarBreak(QtCore.Qt.BottomToolBarArea)
         self.__main_window.addToolBar(
             QtCore.Qt.BottomToolBarArea, self.__toolbar)
+        self.__toolbar.setIconSize(QtCore.QSize(24, 24))
 
         self.__check_transform_key()
 

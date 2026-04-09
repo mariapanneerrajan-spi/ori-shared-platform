@@ -168,6 +168,7 @@ class InteractiveModes(QtCore.QObject):
 
         self.__main_window.addToolBarBreak(QtCore.Qt.BottomToolBarArea)
         self.__main_window.addToolBar(QtCore.Qt.BottomToolBarArea, self.tool_bar)
+        self.tool_bar.setIconSize(QtCore.QSize(24, 24))
 
     def __update_custom_attrs(self, out, attr_id, value):
         if attr_id == C.INTERACTIVE_MODE:

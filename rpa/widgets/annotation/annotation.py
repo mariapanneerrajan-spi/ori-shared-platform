@@ -559,6 +559,7 @@ class Annotation(QtCore.QObject):
         self.__main_window.addToolBarBreak(QtCore.Qt.BottomToolBarArea)
         self.__main_window.addToolBar(
             QtCore.Qt.BottomToolBarArea, self.tool_bar)
+        self.tool_bar.setIconSize(QtCore.QSize(24, 24))
         self.__text_line_edit.textEdited.connect(
             lambda text: self.__set_text(text))
         self.__main_window.addAction(self.actions.cycle_to_next_color)

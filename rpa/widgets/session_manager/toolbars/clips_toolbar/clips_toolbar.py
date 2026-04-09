@@ -23,6 +23,7 @@ class ClipsToolbar(QtWidgets.QToolBar):
         self.setObjectName("Session Manager Clips Toolbar")
         self.setWindowTitle("Session Manager Clips Toolbar")
         self.setOrientation(QtCore.Qt.Vertical)
+        self.setIconSize(QtCore.QSize(20, 20))
 
         make_icon = \
             lambda icon_name: QtGui.QIcon(QtGui.QPixmap(icon_name))

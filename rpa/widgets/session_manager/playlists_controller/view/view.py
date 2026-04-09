@@ -29,6 +29,8 @@ class View(QtWidgets.QListView):
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(True)
         self.setStyle(Style())
+        self.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.setFrameShadow(QtWidgets.QFrame.Sunken)
 
         self.__mime_data_formats = []
 

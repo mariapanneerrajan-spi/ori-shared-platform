@@ -68,6 +68,7 @@ class TimelineController(QtWidgets.QToolBar):
         self.__timeline_api.SIG_MODIFIED.connect(self.__update)
 
         self.__main_window.addToolBar(QtCore.Qt.BottomToolBarArea, self)
+        self.setIconSize(QtCore.QSize(24, 24))
 
         copy_shortcut = QShortcut(QtGui.QKeySequence("Ctrl+C"), self.__slider)
         copy_shortcut.setContext(QtCore.Qt.WidgetShortcut)

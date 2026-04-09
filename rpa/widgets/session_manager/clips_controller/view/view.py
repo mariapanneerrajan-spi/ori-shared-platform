@@ -26,6 +26,7 @@ class Table(QtWidgets.QTableView):
         self.setAlternatingRowColors(True)
         self.setItemDelegate(ItemDelegate(self))
         self.verticalHeader().setDefaultSectionSize(THUMBNAIL_HEIGHT)
+        self.verticalHeader().setVisible(False)
 
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
         self.setDefaultDropAction(QtCore.Qt.MoveAction)
@@ -33,6 +34,8 @@ class Table(QtWidgets.QTableView):
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(True)
         self.setStyle(Style())
+        self.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.setFrameShadow(QtWidgets.QFrame.Sunken)
 
         palette = self.palette()
         palette.setColor(

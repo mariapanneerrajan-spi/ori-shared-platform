@@ -286,7 +286,13 @@ class SessionManager:
             clip_data["attrs"] = attr_values
 
             # Custom Attrs
+            # Skip internal review-system node references (rv_*). These point
+            # to per-clip OpenRV nodes (source group, retime, paint, etc.) and
+            # must not be transferred to a different clip — doing so would
+            # overwrite the new clip's valid node references with stale ones
+            # from the source clip, which may have been deleted (e.g. on cut).
             for attr_id in self.__rpa.session_api.get_custom_clip_attr_ids(clip):
+                if attr_id.startswith("rv_"): continue
                 clip_data.setdefault("custom_attrs", {})[attr_id] = \
                     self.__rpa.session_api.get_custom_clip_attr(clip, attr_id)
 

@@ -72,25 +72,67 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
 
     def __rv_session_initialized(self, event):
         event.reject()
-        self.__main_window = rv.qtutils.sessionWindow()
-        self.__main_window.menuBar().setObjectName("rv_menu_bar")
-        # self.__main_window.menuBar().hide()
 
-        old_central = self.__main_window.centralWidget()
+        # Phase 1 prototype: instead of stripping OpenRV's main window, build a
+        # fresh Itview QMainWindow and re-parent only the viewport widget into
+        # it. See plans/humble-meandering-sutherland.md for the rationale and
+        # the GL-context risk we're validating here.
+        self.__rv_main_window = rv.qtutils.sessionWindow()
+
+        # Find OpenRV's viewport widget (GLView, a QOpenGLWidget). Its
+        # objectName is set to "no session" in OpenRV's GLView constructor.
+        # If a future OpenRV release renames it, fail loud — silent failure
+        # here would mean a black window with no clue why.
+        self._viewport_widget = self.__rv_main_window.findChild(
+            QtWidgets.QWidget, "no session")
+        assert self._viewport_widget is not None, (
+            "Could not find OpenRV viewport widget (objectName='no session'). "
+            "OpenRV may have renamed it in a newer release.")
+
+        # Modes and key bindings live on RvSession, not on the window. Clear
+        # them so OpenRV's defaults don't leak into Itview.
+        # commands.deactivateMode("annotate_mode")
+        # commands.deactivateMode("session_manager")
+        # commands.clearSession()
+        # commands.setCursor(0)
+        # for binding in commands.bindings():
+        #     commands.unbind("default", "global", binding[0])
+
+        # Hide OpenRV's main window but keep it ALIVE. GLView holds a raw C++
+        # pointer (m_doc) to RvDocument; deleting RvDocument would dangle that
+        # pointer and crash on the next render. Hiding is enough to keep all
+        # of OpenRV's stock UI (menus, toolbars, hotkeys) out of Itview.
+        # self.__rv_main_window.hide()
+
+        # Build the new Itview main window and re-parent the viewport into it.
+        self.__main_window = QtWidgets.QMainWindow()
+        self.__main_window.setWindowTitle("Itview")
+
         container = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         self._itview_menu_bar = QtWidgets.QMenuBar()
-
         layout.addWidget(self._itview_menu_bar)
-        layout.addWidget(old_central)
+
+        # The moment of truth: re-parenting a QOpenGLWidget across top-level
+        # windows can trigger a GL context destroy/recreate. If the viewport
+        # goes black, playback fails, or textures vanish after this point,
+        # see Phase 1 fallback options in the plan file.
+        self._viewport_widget.setParent(container)
+        layout.addWidget(self._viewport_widget)
+        # QWidget.setParent() sets the widget's visibility to false, and
+        # addWidget() does NOT re-show a widget that was hidden by setParent().
+        # Without this explicit show(), the viewport sits inside the layout
+        # but is invisible — the central area looks empty.
+        self._viewport_widget.show()
 
         self.__main_window.setCentralWidget(container)
 
-        self.__strip_rv_main_window()
         self.__setup_rpa_mode()
+
+        self.__main_window.show()
 
     def eventFilter(self, object, event):
         if isinstance(object, QtWidgets.QMenuBar) and \
@@ -144,8 +186,8 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
         self.__strip_rv_menu_bar(self.__main_window.menuBar())
 
     def __setup_rpa_mode(self):
-        self._viewport_widget = self.__main_window.findChild(
-            QtWidgets.QWidget, "no session")
+        # Viewport widget was already located and re-parented in
+        # __rv_session_initialized — nothing to do here for it.
         app = QtWidgets.QApplication.instance()
         app.setPalette(ItviewPalette())
 
@@ -419,6 +461,10 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
         self.__main_window.get_file_menu = types.MethodType(lambda self: self._file_menu, self)
         self.__main_window.get_session_menu = types.MethodType(lambda self: self._session_menu, self)
         self.__main_window.get_plugins_menu = types.MethodType(lambda self: self._plugins_menu, self)
+        # view_controller plugin calls toggle_fullscreen() on the main window.
+        # Used to be provided by RvDocument; now we own the window so we
+        # implement it ourselves.
+        self.__main_window.toggle_fullscreen = self._toggle_fullscreen
 
         logger = create_logger()
         plugin_manager = \
@@ -430,6 +476,7 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
 
         self.__rpa.session_api.get_attrs_metadata()
         self.__rpa_core.viewport_api._set_viewport_widget(self._viewport_widget)
+        self.__main_window._core_view = self._viewport_widget
         self.__rpa.session_api.clear()
 
         dbid_mapper = DbidMapper()
@@ -438,8 +485,15 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
             self._viewport_widget)
         plugin_manager.init(self.__rpa, dbid_mapper, self.__viewport_user_input)
 
-        app.installEventFilter(self)
-        self._viewport_widget.installEventFilter(self)
+        # No event filters needed: OpenRV's main window is hidden so its stock
+        # toolbars/menus/dock widgets never become visible, and the viewport
+        # double-click handler in eventFilter was already a no-op.
+
+    def _toggle_fullscreen(self):
+        if self.__main_window.isFullScreen():
+            self.__main_window.showNormal()
+        else:
+            self.__main_window.showFullScreen()
 
     def __strip_menu_actions_recursively(self, menu):
         actions = menu.actions()[:]

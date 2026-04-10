@@ -28,7 +28,7 @@ class HelpMenu(QtCore.QObject):
         self.__create_menu()
 
     def __create_menu(self):
-        self.help_menu = self.__main_window.get_itview_menu_bar().addMenu("Help")
+        self.help_menu = self.__main_window.menuBar().addMenu("Help")
         self.help_menu.addAction(self.__user_documentation)
         self.help_menu.addAction(self.__rpa_documentation)
         self.help_menu.addAction(self.__about)

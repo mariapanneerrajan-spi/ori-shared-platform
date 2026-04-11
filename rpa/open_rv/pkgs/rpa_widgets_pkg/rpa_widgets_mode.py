@@ -109,9 +109,27 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
         # and provides the menu bar / accessor methods plugins expect.
         self.__main_window = ItviewMainWindow(self._viewport_widget)
 
+        # Itview is deliberately agnostic to OpenRV, so it doesn't know how
+        # to shut the underlying review system down. That's our job as the
+        # RV-specific glue: when Itview closes, close the hidden RvDocument
+        # so OpenRV's normal shutdown path runs (before-session-deletion
+        # handler in RvDocument::closeEvent) and Qt's quitOnLastWindowClosed
+        # takes the app down.
+        self.__main_window.SIG_CLOSED.connect(self.__on_itview_closed)
+
         self.__setup_rpa_mode()
 
         self.__main_window.show()
+
+    def __on_itview_closed(self):
+        """Close the hidden RvDocument when Itview closes.
+
+        Invoked via ItviewMainWindow.SIG_CLOSED. Closing RvDocument runs
+        OpenRV's before-session-deletion handler and, since it was the
+        only other top-level window, lets Qt quit the application.
+        """
+        if self.__rv_main_window is not None:
+            self.__rv_main_window.close()
 
     def eventFilter(self, object, event):
         if isinstance(object, QtWidgets.QMenuBar) and \

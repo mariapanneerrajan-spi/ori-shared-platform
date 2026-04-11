@@ -1,10 +1,10 @@
 """Itview's main window.
 
-Constructed with the OpenRV viewport widget (GLView, a QOpenGLWidget),
-which is re-parented into the central widget under a custom menu bar.
-The OpenRV main window (RvDocument) is hidden separately by the caller
-but kept alive — GLView holds a raw C++ pointer to RvDocument and would
-crash if RvDocument were deleted.
+Constructed with a viewport widget supplied by the caller, which is
+re-parented into the central widget under a custom menu bar. Itview is
+deliberately agnostic to which review system provided that viewport —
+shutdown of the underlying review system is coordinated via the
+SIG_CLOSED signal, which the review-system-specific glue listens to.
 """
 
 import ctypes
@@ -12,11 +12,20 @@ import platform
 
 try:
     from PySide2 import QtWidgets
+    from PySide2.QtCore import Signal
 except ImportError:
     from PySide6 import QtWidgets
+    from PySide6.QtCore import Signal
 
 
 class ItviewMainWindow(QtWidgets.QMainWindow):
+
+    # Emitted from closeEvent, before the event is forwarded to the base
+    # class. Review-system-specific glue (e.g. the RV mode) connects to this
+    # to tear down the underlying review system's own main window/session.
+    # Kept as a plain signal with no args so Itview stays decoupled from any
+    # particular review system.
+    SIG_CLOSED = Signal()
 
     def __init__(self, viewport_widget, parent=None):
         super().__init__(parent)
@@ -80,3 +89,15 @@ class ItviewMainWindow(QtWidgets.QMainWindow):
             self.showNormal()
         else:
             self.showFullScreen()
+
+    def closeEvent(self, event):
+        """Notify listeners that Itview is closing, then proceed.
+
+        Emits SIG_CLOSED so the review-system-specific glue can shut down
+        the underlying review system (e.g. close RvDocument so OpenRV
+        actually quits — without this it lingers as a hidden window).
+        Signal emission is synchronous, so listeners have run by the time
+        we forward to the base class.
+        """
+        self.SIG_CLOSED.emit()
+        super().closeEvent(event)

@@ -18,6 +18,12 @@ except ImportError:
     from PySide6.QtCore import Signal
 
 
+# Bump when dock widget objectNames or the layout structure change in a
+# backwards-incompatible way; restoreState() will silently discard saved
+# state with a different version instead of applying a broken layout.
+_STATE_VERSION = 1
+
+
 class ItviewMainWindow(QtWidgets.QMainWindow):
 
     # Emitted from closeEvent, before the event is forwarded to the base
@@ -27,9 +33,18 @@ class ItviewMainWindow(QtWidgets.QMainWindow):
     # particular review system.
     SIG_CLOSED = Signal()
 
-    def __init__(self, viewport_widget, parent=None):
+    def __init__(self, viewport_widget, settings=None, logger=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Itview")
+
+        # Shared QSettings / logger passed in by the review-system glue. The
+        # same QSettings object is injected into Rpa so Itview and RPA share
+        # one on-disk file. `settings` is used to persist window geometry and
+        # dock/toolbar layout across sessions; `logger` is accepted for
+        # symmetry with Rpa and kept available for future use.
+        self._settings = settings
+        self._logger = logger
+        self._layout_restored = False
 
         self._viewport_widget = viewport_widget
         # Some plugins reach for `_core_view` as an attribute. Kept alongside
@@ -90,6 +105,21 @@ class ItviewMainWindow(QtWidgets.QMainWindow):
         else:
             self.showFullScreen()
 
+    def showEvent(self, event):
+        """Restore saved layout on the first show.
+
+        By the time Qt fires showEvent, the plugin manager has already run
+        and every plugin dock widget has been added to this window — so
+        restoreState() can match saved entries against each dock widget's
+        objectName(). Guarded by _layout_restored so later show/hide
+        cycles (e.g. toggling fullscreen) don't re-apply the saved state
+        on top of the user's in-session adjustments.
+        """
+        super().showEvent(event)
+        if not self._layout_restored:
+            self._layout_restored = True
+            self._restore_layout()
+
     def closeEvent(self, event):
         """Notify listeners that Itview is closing, then proceed.
 
@@ -98,6 +128,42 @@ class ItviewMainWindow(QtWidgets.QMainWindow):
         actually quits — without this it lingers as a hidden window).
         Signal emission is synchronous, so listeners have run by the time
         we forward to the base class.
+
+        Layout is saved *before* SIG_CLOSED is emitted, while the window
+        is still fully intact — the signal triggers review-system teardown
+        which may reparent or destroy dock widgets.
         """
+        self._save_layout()
         self.SIG_CLOSED.emit()
         super().closeEvent(event)
+
+    # --- Layout persistence ------------------------------------------------
+
+    def _save_layout(self):
+        """Persist window geometry and dock/toolbar layout to settings.
+
+        Keys are written relative to whatever group the shared QSettings
+        already has active (the injector sets up the top-level "itview"
+        group), so on disk these end up as "itview/window/geometry" and
+        "itview/window/state".
+        """
+        if self._settings is None:
+            return
+        self._settings.setValue("window/geometry", self.saveGeometry())
+        self._settings.setValue(
+            "window/state", self.saveState(_STATE_VERSION))
+
+    def _restore_layout(self):
+        """Restore window geometry and dock/toolbar layout from settings.
+
+        Silently does nothing if no state has been saved yet (first launch)
+        or if the saved state version doesn't match _STATE_VERSION.
+        """
+        if self._settings is None:
+            return
+        geometry = self._settings.value("window/geometry")
+        if geometry is not None:
+            self.restoreGeometry(geometry)
+        state = self._settings.value("window/state")
+        if state is not None:
+            self.restoreState(state, _STATE_VERSION)

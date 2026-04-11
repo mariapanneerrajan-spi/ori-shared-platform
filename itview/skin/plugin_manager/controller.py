@@ -14,7 +14,9 @@ from itview.skin.widgets.itv_dock_widget import ItvDockWidget
 from itview.skin.plugin_manager.model import Model, ConfigPath, \
     PluginRow, PluginHeaderIndex, PluginMdataAttrName, PluginData
 from itview.skin.plugin_manager.view import View
+from itview.skin.plugin_manager import plugin_config_reader
 from itview.skin.dbid_mapper import DbidMapper
+from itview.cli.env_keys import ITVIEW5_CLI_ARGS_JSON
 from rpa.rpa import Rpa
 
 from itview.skin.plugin_manager.settings_widget import SettingsAPI as _SettingsApi
@@ -50,15 +52,37 @@ class Controller(QtCore.QObject):
         self.__dbid_mapper = None
         self.__viewport_user_input = None
 
-        # self.__cmd_line_args = None
-        # self.__cmd_line_arg_parser = argparse.ArgumentParser(
-        #     prog="itview5",
-        #     description="Itview5 command line arguments")
+        # CLI args were parsed by launch_itview.py *before* rv.exe booted
+        # and stashed in an env var. Rehydrate them into a Namespace so
+        # plugins can access them via itview.cmd_line_args in itview_init.
+        self.__cmd_line_args = self.__load_cmd_line_args()
 
         self.__settings_api = None
         _SettingsApi.initialize()
 
         self.__setup_model(config_paths)
+
+    def __load_cmd_line_args(self) -> argparse.Namespace:
+        """
+        Rehydrate the argparse.Namespace produced by launch_itview.py.
+        If the env var is missing (e.g. rv.exe launched directly without
+        the wrapper), return an empty Namespace and warn - plugins that
+        declared a CLI arg will then get a clear AttributeError when they
+        try to read it.
+        """
+        raw = os.environ.get(ITVIEW5_CLI_ARGS_JSON)
+        if not raw:
+            self.__logger_api.warning(
+                f"{ITVIEW5_CLI_ARGS_JSON} env var is not set. "
+                f"Plugins that declared CLI args will fail to read them. "
+                f"Did you launch Itview via launch_itview.py?")
+            return argparse.Namespace()
+        try:
+            return argparse.Namespace(**json.loads(raw))
+        except (ValueError, TypeError) as exc:
+            self.__logger_api.warning(
+                f"Could not parse {ITVIEW5_CLI_ARGS_JSON}: {exc}")
+            return argparse.Namespace()
 
     def __setup_model(self, config_paths:List[ConfigPath]):
         self.__model = Model(self.__main_window)
@@ -67,7 +91,6 @@ class Controller(QtCore.QObject):
         for config_path in config_paths:
             self.__all_plugin_data.extend(
                 self.__get_all_plugin_data(config_path))
-        # self.__cmd_line_args = self.__cmd_line_arg_parser.parse_args()
 
     def init(self, rpa, dbid_mapper, viewport_user_input):
         self.__rpa = rpa
@@ -86,7 +109,8 @@ class Controller(QtCore.QObject):
 
         self.__itview = ItviewPluginParams(
             self.__rpa, self.__dbid_mapper, self.__main_window,
-            None,  self.__viewport_user_input, self.__settings_api)
+            self.__cmd_line_args, self.__viewport_user_input,
+            self.__settings_api)
 
         self.__inject_itview_into_all_plugins()
         self.__setup_view()
@@ -113,15 +137,6 @@ class Controller(QtCore.QObject):
             traceback.print_exc()
             return False
         return True
-
-    def __setup_model(self, config_paths:List[ConfigPath]):
-        self.__model = Model(self.__main_window)
-        self.__set_plugin_headers()
-        self.__all_plugin_data = []
-        for config_path in config_paths:
-            self.__all_plugin_data.extend(
-                self.__get_all_plugin_data(config_path))
-        # self.__cmd_line_args = self.__cmd_line_arg_parser.parse_args()
 
     def __inject_itview_into_all_plugins(self):
         for plugin_data in self.__all_plugin_data:
@@ -229,25 +244,24 @@ class Controller(QtCore.QObject):
         return plugin_row
 
     def __get_plugin_paths(self, config_path:str):
+        # Folder resolution is shared with the pre-rv launcher; the extra
+        # bookkeeping here (dedupe by plugin name, ImportPathEnforcer
+        # registration) is Controller-specific and stays in this method.
         abs_plugin_paths = []
         try:
-            with open(config_path, "r", encoding="utf-8") as file_:
-                try:
-                    config_dir = os.path.abspath(os.path.dirname(config_path))
-                    plugin_paths = self.__read_plugin_paths(config_path)
-                    for path in plugin_paths:
-                        plugin_module_name = os.path.basename(path)
-                        if plugin_module_name in ImportPathEnforcer.MODULE_NAME_TO_PATH:
-                            continue
-                        if os.path.isabs(path): abs_plugin_path = path
-                        else: abs_plugin_path = os.path.join(config_dir, path)
-                        abs_plugin_paths.append(abs_plugin_path)
-                        ImportPathEnforcer.MODULE_NAME_TO_PATH[
-                            plugin_module_name] = os.path.join(abs_plugin_path, "__init__.py")
-                except Exception as exception:
-                    self.__logger_api.warning(exception)
-        except FileNotFoundError as exception:
+            folders = plugin_config_reader.resolve_plugin_folders(config_path)
+        except Exception as exception:
             self.__logger_api.warning(exception)
+            return abs_plugin_paths
+
+        for abs_plugin_path in folders:
+            plugin_module_name = os.path.basename(abs_plugin_path)
+            if plugin_module_name in ImportPathEnforcer.MODULE_NAME_TO_PATH:
+                continue
+            abs_plugin_paths.append(abs_plugin_path)
+            ImportPathEnforcer.MODULE_NAME_TO_PATH[
+                plugin_module_name] = os.path.join(
+                    abs_plugin_path, "__init__.py")
         return abs_plugin_paths
 
     def __does_plugin_folder_path_exist(self, plugin_path:str)->bool:
@@ -290,10 +304,6 @@ class Controller(QtCore.QObject):
                 f"Plugin file doesn't exist, {plugin_file_path}")
             return False
         return True
-
-    def __get_cmd_line_args(self, plugin):
-        if hasattr(plugin, "add_cmd_line_args"):
-            plugin.add_cmd_line_args(self.__cmd_line_arg_parser)
 
     def __register_settings(self, plugin):
         if hasattr(plugin, "register_settings"):
@@ -365,7 +375,6 @@ class Controller(QtCore.QObject):
         plugin_instance = plugin_class()
         self.__plugin_instances.append(plugin_instance)
 
-        # self.__get_cmd_line_args(plugin_instance)
         self.__register_settings(plugin_instance)
 
         return PluginData(plugin_path, label, plugin_instance, mdata)
@@ -421,23 +430,6 @@ class Controller(QtCore.QObject):
             self.__view.make_column_copyable(header_name)
         self.__write_copyable_column_indexes(
             self.__model.get_copyable_column_indexes())
-
-    def __read_plugin_paths(self, cfg_path):
-        plugin_paths = []
-
-        with open(cfg_path, 'r') as f:
-            for line in f:
-                line = line.strip()
-
-                # Skip empty or commented lines
-                if not line or line.startswith("#"):
-                    continue
-
-                # Remove trailing comma if present
-                path = line.rstrip(",")
-                plugin_paths.append(path)
-
-        return plugin_paths
 
     def __write_copyable_column_indexes(self, copyable_plugin_col_indexes):
         """

@@ -35,4 +35,4 @@ export ITVIEW5_CORE_PLUGINS_CONFIG="$SCRIPT_DIR/itview5_plugins/open_itview5_plu
 export QT_LOGGING_RULES="*=false;qt.core.critical=true;qt.core.fatal=true"
 export QTWEBENGINE_DISABLE_SANDBOX=1
 
-exec "$RV_HOME/bin/rv" "$@"
+exec python -m itview.launch_itview "$@"

@@ -38,4 +38,4 @@ REM Qt settings
 set "QT_LOGGING_RULES=*=false;qt.core.critical=true;qt.core.fatal=true"
 set "QTWEBENGINE_DISABLE_SANDBOX=1"
 
-"%RV_HOME%\bin\rv.exe" %*
+python -m itview.launch_itview %*

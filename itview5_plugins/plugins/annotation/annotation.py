@@ -72,20 +72,11 @@ class Annotation(QtCore.QObject):
         return False
 
     def post_itview_init(self):
-        pass
-    #     if self.__cmd_line_args.pencolor is not None:
-    #         pen_color = self.__cmd_line_args.pencolor
-    #         pen_color = tuple(map(lambda x: max(0.0, min(1.0, x)), pen_color))
-    #         self.__annotation.set_pen_color(pen_color)
-
-    # def add_cmd_line_args(self, parser):
-    #     group = parser.add_argument_group("Annotations")
-    #     group.add_argument(
-    #         '--pc', '--pencolor',
-    #         action='store',
-    #         type=float,
-    #         nargs=3,
-    #         metavar=('RED', 'GREEN', 'BLUE'),
-    #         dest='pencolor',
-    #         help='Specify annotation pen color as RGB of [0.0 - 1.0]'
-    #     )
+        print("Annotation plugin post_itview_init 1")
+        print("Annotation plugin post_itview_init 2", self.__cmd_line_args)
+        if self.__cmd_line_args.pencolor is not None:
+            print("Annotation plugin post_itview_init 2")
+            pen_color = self.__cmd_line_args.pencolor
+            print("pen_color:", pen_color )
+            pen_color = tuple(map(lambda x: max(0.0, min(1.0, x)), pen_color))
+            self.__annotation.set_pen_color(pen_color)

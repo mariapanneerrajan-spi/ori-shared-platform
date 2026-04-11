@@ -60,6 +60,8 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
 
     def __init__(self):
 
+        print("RpaWidgetsMode __init__")
+
         QtCore.QObject.__init__(self)
         rvtypes.MinorMode.__init__(self)
 

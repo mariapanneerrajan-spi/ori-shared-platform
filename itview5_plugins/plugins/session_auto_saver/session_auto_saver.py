@@ -12,14 +12,13 @@ class SessionAutoSaver(QtCore.QObject):
     def itview_init(self, itview):
         self.__rpa = itview.rpa
         self.__main_window = itview.main_window
-        # self.__cmd_line_args = itview.cmd_line_args
+        self.__cmd_line_args = itview.cmd_line_args
 
         auto_save_directory = \
             os.path.join(os.path.expanduser("~"), ".config", "imageworks.com")
         os.makedirs(auto_save_directory, exist_ok=True)
 
-        # hide_checkbox = self.__cmd_line_args.no_session_autosave
-        hide_checkbox = False
+        hide_checkbox = self.__cmd_line_args.no_session_autosave
         self.__session_auto_saver = _SessionAutoSaver(
             self.__rpa, self.__main_window,
             auto_save_directory=auto_save_directory, include_feedback=True,

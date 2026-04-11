@@ -21,4 +21,4 @@ export QTWEBENGINE_DISABLE_SANDBOX=1
 export SUB_EXE="$ITVIEW_DIR/sub/sub.py"
 
 
-exec "$ITVIEW_DIR/main.py" "$@"
+exec python -m itview.launch_itview "$@"

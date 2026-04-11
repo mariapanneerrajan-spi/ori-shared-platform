@@ -24,4 +24,4 @@ set "QTWEBENGINE_DISABLE_SANDBOX=1"
 set "SUB_EXE=%ITVIEW_DIR%\sub\sub.py"
 
 REM Run the main script with all arguments
-python "%PROJ_DIR%\main.py" %*
+python -m itview.launch_itview %*

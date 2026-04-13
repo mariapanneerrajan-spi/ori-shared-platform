@@ -17,6 +17,7 @@ from itview.skin.plugin_manager.controller import Controller as PluginManager
 from itview import plugin_path_configs
 from itview.skin.dbid_mapper import DbidMapper
 from itview.core.viewport_user_input_rx import ViewportUserInputRx
+from itview.core.viewport_binding_filter import ViewportBindingFilter
 from rpa.utils import default_connection_maker
 from itview.skin.itview_main_window import ItviewMainWindow
 from itview.skin.itview_stylesheet import apply_itview_styling
@@ -153,6 +154,16 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
         self.__rpa.session_api.get_attrs_metadata()
         self.__rpa_core.viewport_api._set_viewport_widget(self._viewport_widget)
         self.__rpa.session_api.clear()
+
+        # Install the binding filter on the viewport BEFORE plugins load their
+        # own event filters.  Qt calls filters in reverse installation order
+        # (last installed = first called), so plugin filters — installed later
+        # during itview_init — run before ours.  Plugins process the event and
+        # return False; our filter then consumes it, preventing GLView::event()
+        # from translating it into a Mu event (hotkey, popup menu, etc.).
+        self.__viewport_binding_filter = ViewportBindingFilter()
+        self._viewport_widget.installEventFilter(
+            self.__viewport_binding_filter)
 
         dbid_mapper = DbidMapper()
         self.__viewport_user_input = ViewportUserInputRx()

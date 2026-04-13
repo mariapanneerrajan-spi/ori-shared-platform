@@ -266,6 +266,22 @@ class Annotation(QtCore.QObject):
         self.__text = Text()
         self.__text_position = None
 
+    def __get_effective_interactive_mode(self, event):
+        modifiers = event.modifiers()
+        if modifiers == QtCore.Qt.ControlModifier:
+            return C.INTERACTIVE_MODE_PEN
+        if modifiers == (QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier):
+            return C.INTERACTIVE_MODE_HARD_ERASER
+        if modifiers == (QtCore.Qt.ControlModifier | QtCore.Qt.AltModifier):
+            return C.INTERACTIVE_MODE_LINE
+        if modifiers == (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier):
+            return C.INTERACTIVE_MODE_MULTI_LINE
+        modifier_mode = self.__session_api.get_custom_session_attr(
+            C.MODIFIER_INTERACTIVE_MODE)
+        if modifier_mode is not None:
+            return modifier_mode
+        return self.__interactive_mode
+
     def __append_mouse_point(self, x, y):
         interactive_mode = self.__mouse_down.interactive_mode
         if interactive_mode == C.INTERACTIVE_MODE_MOVE:
@@ -399,7 +415,8 @@ class Annotation(QtCore.QObject):
 
         get_pos = lambda: (event.pos().x(), obj.height() - event.pos().y())
         self.__geometry = self.__viewport_api.get_current_clip_geometry()
-        if self.__interactive_mode in (
+        effective_mode = self.__get_effective_interactive_mode(event)
+        if effective_mode in (
             C.INTERACTIVE_MODE_PEN,
             C.INTERACTIVE_MODE_LINE,
             C.INTERACTIVE_MODE_MULTI_LINE,
@@ -409,15 +426,15 @@ class Annotation(QtCore.QObject):
         ):
             if self.__geometry is not None:
                 mode = StrokeMode.PEN
-                if self.__interactive_mode in \
+                if effective_mode in \
                     (C.INTERACTIVE_MODE_HARD_ERASER, C.INTERACTIVE_MODE_SOFT_ERASER):
                     mode = StrokeMode.ERASER
                 brush = StrokeBrush.CIRCLE
-                if self.__interactive_mode in \
+                if effective_mode in \
                     (C.INTERACTIVE_MODE_AIRBRUSH, C.INTERACTIVE_MODE_SOFT_ERASER):
                     brush = StrokeBrush.GAUSS
                 width = self.__pen_width
-                if self.__interactive_mode in \
+                if effective_mode in \
                     (C.INTERACTIVE_MODE_HARD_ERASER, C.INTERACTIVE_MODE_SOFT_ERASER):
                     width = self.__eraser_width
                 point = Point(*screen_to_itview(self.__geometry, *get_pos()))
@@ -449,9 +466,7 @@ class Annotation(QtCore.QObject):
                 self.__mouse_down = None
                 return False
 
-        interactive_mode = self.__session_api.get_custom_session_attr(
-            C.MODIFIER_INTERACTIVE_MODE)
-        if interactive_mode is None: interactive_mode = self.__interactive_mode
+        interactive_mode = effective_mode
         if interactive_mode is None: return False
 
         # text mode

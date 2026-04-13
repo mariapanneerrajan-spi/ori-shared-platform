@@ -255,6 +255,16 @@ STYLESHEET = """
     QToolButton:pressed {
         background: palette(dark);
     }
+    QToolButton:checked {
+        background: palette(dark);
+        border: 1px solid palette(highlight);
+        border-radius: 2px;
+    }
+    QToolButton:checked:hover {
+        background: palette(midlight);
+        border: 1px solid palette(highlight);
+        border-radius: 2px;
+    }
 """
 
 

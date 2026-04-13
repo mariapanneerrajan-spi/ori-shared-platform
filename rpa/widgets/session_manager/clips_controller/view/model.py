@@ -259,8 +259,10 @@ class Model(QtCore.QAbstractTableModel):
             if self.__playlist == playlist:
                 row = self.__clips.index(clip)
                 if row is None:
-                    return
+                    continue
                 column = self.__attrs.index(attr)
+                if column is None:
+                    continue
                 index = self.index(row, column)
                 self.dataChanged.emit(index, index)
 

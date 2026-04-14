@@ -173,7 +173,7 @@ class Splitter(QtWidgets.QSplitter):
         now = time.time()
         if now >= self.__target_sizes.anim_end:
             self.setSizes(self.__target_sizes.target_sizes)
-            self.__update_icons(self.__target_sizes.target_sizes)
+            self.__update_icons(self.__target_sizes.target_sizes[Splitter.PLAYLIST_PANEL_INDEX])
             self.__animation_timer.stop()
             self.__animating = False
             self.__target_sizes = None

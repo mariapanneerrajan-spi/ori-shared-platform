@@ -43,6 +43,11 @@ class ClipsController(QtCore.QObject):
         self.__rpa = rpa
         self.__sel_change_playlist_id = None
 
+        self.__sel_debounce_timer = QtCore.QTimer(self)
+        self.__sel_debounce_timer.setSingleShot(True)
+        self.__sel_debounce_timer.setInterval(50)
+        self.__sel_debounce_timer.timeout.connect(self.__apply_selection)
+
         self.__view = View(parent)
         self.__model = Model(rpa)
         self.__model.SIG_MOVE.connect(self.SIG_MOVE)
@@ -256,6 +261,9 @@ class ClipsController(QtCore.QObject):
         return ids
 
     def __selection_changed(self):
+        self.__sel_debounce_timer.start()
+
+    def __apply_selection(self):
         ids = []
         if len(self.__model.clips) > 0:
             selected_rows = self.__view.table.selectionModel().selectedRows()

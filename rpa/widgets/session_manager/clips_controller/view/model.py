@@ -255,6 +255,8 @@ class Model(QtCore.QAbstractTableModel):
             start_index, end_index, [QtCore.Qt.BackgroundRole])
 
     def update_attr_values(self, attr_values):
+        min_row = min_col = None
+        max_row = max_col = None
         for attr_value in attr_values:
             playlist, clip, attr, value = attr_value
             if self.__playlist == playlist:
@@ -264,8 +266,14 @@ class Model(QtCore.QAbstractTableModel):
                 column = self.__attrs.index(attr)
                 if column is None:
                     continue
-                index = self.index(row, column)
-                self.dataChanged.emit(index, index)
+                min_row = row if min_row is None else min(min_row, row)
+                max_row = row if max_row is None else max(max_row, row)
+                min_col = column if min_col is None else min(min_col, column)
+                max_col = column if max_col is None else max(max_col, column)
+        if min_row is not None:
+            self.dataChanged.emit(
+                self.index(min_row, min_col),
+                self.index(max_row, max_col))
 
     def supportedDropActions(self):
         return QtCore.Qt.CopyAction | QtCore.Qt.MoveAction

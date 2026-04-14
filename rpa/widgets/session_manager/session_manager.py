@@ -106,6 +106,19 @@ class SessionManager:
         self.__get_media_path_for_paste = None
         self.__auto_rename = False
 
+        # Debounce-save preferences when UI layout changes
+        self.__save_prefs_timer = QtCore.QTimer(self.__view)
+        self.__save_prefs_timer.setSingleShot(True)
+        self.__save_prefs_timer.setInterval(2000)
+        self.__save_prefs_timer.timeout.connect(self.save_preferences)
+        self.__splitter.splitterMoved.connect(self.__schedule_save_preferences)
+        header = self.__clips_controller.view.table.horizontalHeader()
+        header.sectionResized.connect(self.__schedule_save_preferences)
+        header.sectionMoved.connect(self.__schedule_save_preferences)
+        header.sortIndicatorChanged.connect(self.__schedule_save_preferences)
+        if hasattr(header, 'SIG_COLUMN_HIDDEN'):
+            header.SIG_COLUMN_HIDDEN.connect(self.__schedule_save_preferences)
+
     @property
     def view(self):
         return self.__view
@@ -134,6 +147,9 @@ class SessionManager:
         self.__splitter.set_state(splitter_state)
 
         self.__config_api.endGroup()
+
+    def __schedule_save_preferences(self, *args):
+        self.__save_prefs_timer.start()
 
     def save_preferences(self):
         self.__config_api.beginGroup(PrefKey.PLUGIN.value)

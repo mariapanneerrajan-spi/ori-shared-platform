@@ -1,6 +1,3 @@
-import time
-from collections import namedtuple
-from contextlib import contextmanager
 from functools import partial
 try:
     from PySide2 import QtCore, QtGui, QtWidgets
@@ -31,9 +28,6 @@ class SplitterHandle(QtWidgets.QSplitterHandle):
 
 class Splitter(QtWidgets.QSplitter):
 
-    SplitterAnimation = namedtuple(
-        'SplitterAnimation', ['start_sizes', 'target_sizes', 'anim_end'])
-
     PLAYLIST_PANEL_INDEX = 0
     CLIPS_TABLE_INDEX = 1
 
@@ -44,10 +38,8 @@ class Splitter(QtWidgets.QSplitter):
         super().__init__(parent)
 
         self.__ignore_child_event = False
-        self.__animating = False
-        self.__animation_timer = None
-        self.__target_sizes = None
         self.__opened_panel_size = Splitter.PLAYLIST_PANEL_DEFAULT_SIZE
+        self.__animation = None
 
         self.__add_toggle_button()
 
@@ -109,89 +101,40 @@ class Splitter(QtWidgets.QSplitter):
                 self.style().standardIcon(QtWidgets.QStyle.SP_ArrowLeft))
             self.__toggle_button.setToolTip('Hide playlist panel')
 
+    def _get_panel_size(self):
+        return self.sizes()[Splitter.PLAYLIST_PANEL_INDEX]
+
+    def _set_panel_size(self, size):
+        total = sum(self.sizes())
+        self.setSizes([size, total - size])
+        self.__update_icons(size)
+
+    panel_size = QtCore.Property(int, _get_panel_size, _set_panel_size)
+
     def __toggle_left_pane(self):
+        cur_sizes = self.sizes()
 
-        with self.__animate_context() as cur_sizes:
-            orig_sizes = tuple(cur_sizes)
-            if self.__opened_panel_size != \
-                cur_sizes[Splitter.PLAYLIST_PANEL_INDEX] \
-                and cur_sizes[Splitter.PLAYLIST_PANEL_INDEX] != 0:
-                self.__opened_panel_size = cur_sizes[0]
-            if cur_sizes[Splitter.PLAYLIST_PANEL_INDEX] == 0:
-                cur_sizes[Splitter.CLIPS_TABLE_INDEX] -= \
-                    self.__opened_panel_size
-                cur_sizes[Splitter.PLAYLIST_PANEL_INDEX] = \
-                    self.__opened_panel_size
-            else:
-                cur_sizes[Splitter.CLIPS_TABLE_INDEX] += \
-                    cur_sizes[Splitter.PLAYLIST_PANEL_INDEX]
-                cur_sizes[Splitter.PLAYLIST_PANEL_INDEX] = 0
-            self.__target_sizes = Splitter.SplitterAnimation(
-                orig_sizes,
-                tuple(cur_sizes),
-                time.time() + Splitter.ANIM_LENGTH / 1000.0)
+        # Remember the current open size before closing
+        if cur_sizes[Splitter.PLAYLIST_PANEL_INDEX] != 0 and \
+            cur_sizes[Splitter.PLAYLIST_PANEL_INDEX] != self.__opened_panel_size:
+            self.__opened_panel_size = cur_sizes[Splitter.PLAYLIST_PANEL_INDEX]
 
-    @contextmanager
-    def __animate_context(self):
-        """Animate the panel(s) to a new position. Stop any current
-        animation.
-        Context is provided cur_sizes. The context is expected to
-        modify self.__target_sizes. If not, the original animation
-        will continue (if any).
-        """
-        if self.__animating:
-            self.__animation_timer.stop()
-            self.__animating = False
-            cur_sizes = self.__target_sizes.target_sizes
+        if cur_sizes[Splitter.PLAYLIST_PANEL_INDEX] == 0:
+            target_size = self.__opened_panel_size
         else:
-            cur_sizes = self.sizes()
-        orig_target = self.__target_sizes
-        self.__target_sizes = None
+            target_size = 0
 
-        try:
-            yield list(cur_sizes)
-        finally:
-            if self.__target_sizes is None:
-                self.__target_sizes = orig_target
+        # Stop any running animation
+        if self.__animation is not None:
+            self.__animation.stop()
 
-            if self.__target_sizes is not None:
-                if self.__animation_timer is None:
-                    self.__animation_timer = QtCore.QTimer(self)
-                    self.__animation_timer.timeout.connect(self.__animate)
-                self.__animation_timer.start(1000//60)
-                self.__animating = True
-
-
-    @staticmethod
-    def linear_interpolation(a, b, t):
-        return a + (b - a) * t
-
-    @QtCore.Slot()
-    def __animate(self):
-        if not self.__animating or not self.__target_sizes:
-            return
-        now = time.time()
-        if now >= self.__target_sizes.anim_end:
-            self.setSizes(self.__target_sizes.target_sizes)
-            self.__update_icons(self.__target_sizes.target_sizes[Splitter.PLAYLIST_PANEL_INDEX])
-            self.__animation_timer.stop()
-            self.__animating = False
-            self.__target_sizes = None
-
-            self.__splitter_moved()
-            return
-
-        anim_len_in_millis = Splitter.ANIM_LENGTH / 1000.0
-        anim_start = self.__target_sizes.anim_end - anim_len_in_millis
-        perc = (now - anim_start) / anim_len_in_millis
-        tot = sum(self.__target_sizes.target_sizes)
-        tab_size = self.linear_interpolation(
-            self.__target_sizes.start_sizes[Splitter.PLAYLIST_PANEL_INDEX],
-            self.__target_sizes.target_sizes[Splitter.PLAYLIST_PANEL_INDEX],
-            perc)
-
-        mid_size = tot - tab_size
-        self.setSizes([tab_size, mid_size])
+        self.__animation = QtCore.QPropertyAnimation(self, b"panel_size")
+        self.__animation.setDuration(Splitter.ANIM_LENGTH)
+        self.__animation.setStartValue(cur_sizes[Splitter.PLAYLIST_PANEL_INDEX])
+        self.__animation.setEndValue(target_size)
+        self.__animation.setEasingCurve(QtCore.QEasingCurve.OutCubic)
+        self.__animation.finished.connect(self.__splitter_moved)
+        self.__animation.start()
 
     def __splitter_moved(self):
         sizes = self.sizes()

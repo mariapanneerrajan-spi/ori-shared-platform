@@ -93,6 +93,7 @@ class Model(QtCore.QAbstractTableModel):
         self.__editable_icon = QtGui.QIcon(QtGui.QPixmap(":editable32.png"))
         self.__curr_clip_icon = QtGui.QIcon(QtGui.QPixmap(":curclip.png"))
         self.__blank_icon = QtGui.QIcon(QtGui.QPixmap(":blank.png"))
+        self.__clip_custom_cache = {}  # {clip_id: {"is_tm": bool, "clip_color": tuple|None}}
         self.update_playlist()
 
     @property
@@ -132,7 +133,8 @@ class Model(QtCore.QAbstractTableModel):
         attr = self.__attrs[index.column()]
         clip = self.__clips[index.row()]
         value = self.__session_api.get_attr_value(clip, attr)
-        is_tm = self.__session_api.get_custom_clip_attr(clip, "title_media")
+        clip_cache = self.__clip_custom_cache.get(clip, {})
+        is_tm = clip_cache.get("is_tm", False)
 
         if attr == "thumbnail_url" and value != "Loading,...":
             def callback(thumbnail: Union[str, QtGui.QPixmap]):
@@ -187,7 +189,7 @@ class Model(QtCore.QAbstractTableModel):
             return QtCore.Qt.Checked if value is True else QtCore.Qt.Unchecked
 
         if role == QtCore.Qt.BackgroundRole:
-            clip_color = self.__session_api.get_custom_clip_attr(clip, "clip_color")
+            clip_color = clip_cache.get("clip_color")
             if clip in self.__active_clips and \
                 (len(self.__active_clips) != self.rowCount()):
                 return QtGui.QColor(*ACTIVE_CLIPS_ROW_COLOR)
@@ -237,6 +239,14 @@ class Model(QtCore.QAbstractTableModel):
         self.__clips.reset(clips)
         self.__active_clips = \
             set(self.__session_api.get_active_clips(self.__playlist))
+        self.__clip_custom_cache = {}
+        for clip_id in clips:
+            self.__clip_custom_cache[clip_id] = {
+                "is_tm": bool(self.__session_api.get_custom_clip_attr(
+                    clip_id, "title_media")),
+                "clip_color": self.__session_api.get_custom_clip_attr(
+                    clip_id, "clip_color"),
+            }
         self.endResetModel()
 
     def update_current_clip_icon(self):
@@ -251,6 +261,11 @@ class Model(QtCore.QAbstractTableModel):
         end_index = self.index(self.rowCount()-1, self.columnCount()-1)
         self.__active_clips = \
             set(self.__session_api.get_active_clips(self.__playlist))
+        for clip_id in self.__clips:
+            cache = self.__clip_custom_cache.get(clip_id)
+            if cache is not None:
+                cache["clip_color"] = self.__session_api.get_custom_clip_attr(
+                    clip_id, "clip_color")
         self.dataChanged.emit(
             start_index, end_index, [QtCore.Qt.BackgroundRole])
 

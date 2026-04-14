@@ -209,6 +209,7 @@ class ClipsController(QtCore.QObject):
             return
         self.__playlist = fg_playlist
         self.__model.update_playlist()
+        self.__restore_selection()
 
     def __playlist_modified(self, playlist):
         if playlist == self.__sel_change_playlist_id:
@@ -216,6 +217,29 @@ class ClipsController(QtCore.QObject):
             return
         if self.__playlist != playlist: return
         self.__model.update_playlist()
+        self.__restore_selection()
+
+    def __restore_selection(self):
+        active_clip_ids = set(
+            self.__session_api.get_active_clips(self.__playlist))
+        all_clip_ids = self.__session_api.get_clips(self.__playlist)
+        if len(active_clip_ids) == len(all_clip_ids):
+            return  # all clips active = no explicit selection to restore
+
+        selection_model = self.__view.table.selectionModel()
+        selection_model.blockSignals(True)
+        selection_model.clearSelection()
+        for row in range(len(self.__model.clips)):
+            clip_id = self.__model.clips[row]
+            if clip_id in active_clip_ids:
+                source_index = self.__model.index(row, 0)
+                proxy_index = self.__view.table.model().mapFromSource(
+                    source_index)
+                selection_model.select(
+                    proxy_index,
+                    QtCore.QItemSelectionModel.Select
+                    | QtCore.QItemSelectionModel.Rows)
+        selection_model.blockSignals(False)
 
     def __current_clip_changed(self):
         self.__model.update_current_clip_icon()

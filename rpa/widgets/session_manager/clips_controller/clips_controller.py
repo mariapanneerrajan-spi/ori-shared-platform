@@ -29,7 +29,7 @@ class PrefKey(Enum):
 class ClipsController(QtCore.QObject):
     SIG_CUT = QtCore.Signal()
     SIG_COPY = QtCore.Signal()
-    SIG_PASTE = QtCore.Signal()
+    SIG_PASTE = QtCore.Signal(int)  # right-click row index, -1 for empty space
     SIG_MOVE = QtCore.Signal(int)
     SIG_ADD_TITLE = QtCore.Signal(int)
     SIG_EDIT_TITLE = QtCore.Signal(str)
@@ -101,7 +101,7 @@ class ClipsController(QtCore.QObject):
 
         paste_shortcut = QShortcut(QtGui.QKeySequence("Ctrl+V"), self.__view.table)
         paste_shortcut.setContext(QtCore.Qt.WidgetShortcut)
-        paste_shortcut.activated.connect(self.SIG_PASTE)
+        paste_shortcut.activated.connect(lambda: self.SIG_PASTE.emit(-1))
 
         delete_shortcut = QShortcut(QtGui.QKeySequence("Delete"), self.__view.table)
         delete_shortcut.setContext(QtCore.Qt.WidgetShortcut)

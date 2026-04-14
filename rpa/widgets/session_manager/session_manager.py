@@ -253,11 +253,12 @@ class SessionManager:
         self.__dict_to_clipboard(
             self.__get_clips_data(playlist_id, clip_ids), "rpa/clips")
 
-    def paste_clips(self):
+    def paste_clips(self, context_index=-1):
         playlist_id = self.__rpa.session_api.get_fg_playlist()
         clips_data = self.__clipboard_to_dict("rpa/clips")
         if not clips_data: return
-        self.__paste_clips(playlist_id, clips_data)
+        index = context_index if context_index >= 0 else None
+        self.__paste_clips(playlist_id, clips_data, index=index)
 
     def __move_clips(self, drop_index:int):
         playlist_id = self.__rpa.session_api.get_fg_playlist()
@@ -369,14 +370,14 @@ class SessionManager:
                 media_paths.append(attrs.get("media_path"))
 
         clips = self.__rpa.session_api.get_clips(playlist)
-        active_clips = self.__rpa.session_api.get_active_clips(playlist)
-        if not clips: index = 0
-        else:
+        if not clips:
+            index = 0
+        elif index is None:
+            active_clips = self.__rpa.session_api.get_active_clips(playlist)
             if active_clips:
                 index = clips.index(active_clips[-1])
             else:
-                if index is None:
-                    index = len(clips) - 1
+                index = len(clips) - 1
 
         clip_ids = self.__rpa.session_api.create_clips(
             playlist, media_paths, index + 1)

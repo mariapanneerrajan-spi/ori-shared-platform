@@ -10,7 +10,7 @@ class ContextMenu(QtWidgets.QMenu):
     SIG_CREATE = QtCore.Signal()
     SIG_CUT = QtCore.Signal()
     SIG_COPY = QtCore.Signal()
-    SIG_PASTE = QtCore.Signal()
+    SIG_PASTE = QtCore.Signal(int)  # right-click row index, -1 for empty space
     SIG_DELETE_PERMANENTLY = QtCore.Signal()
     SIG_MOVE_TOP = QtCore.Signal()
     SIG_MOVE_UP = QtCore.Signal()
@@ -45,8 +45,9 @@ class ContextMenu(QtWidgets.QMenu):
 
         paste = QAction("Paste", self)
         paste.setShortcut("Ctrl+V")
+
         paste.setProperty("action_id", "paste")
-        paste.triggered.connect(self.SIG_PASTE)
+        paste.triggered.connect(lambda: self.SIG_PASTE.emit(self.__index))
 
         if self.__index == -1:
             if mime_data.hasFormat("rpa/clips"):

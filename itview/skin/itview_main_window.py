@@ -66,6 +66,19 @@ class ItviewMainWindow(QtWidgets.QMainWindow):
         self._session_menu = self.menuBar().addMenu("Session")
         self._plugins_menu = self.menuBar().addMenu("Plugins")
 
+        # Registry: name -> QMenu for all menus (pre-existing and dynamic).
+        # Seeded with the three constructor menus so get_menu() returns them
+        # instead of creating duplicates.
+        self._menus = {
+            "Itview": self._file_menu,
+            "Session": self._session_menu,
+            "Plugins": self._plugins_menu,
+        }
+
+        # Menu names that must stay at the right end of the menu bar.
+        # Dynamic menus created via get_menu() are inserted before these.
+        self._tail_menu_names = {"Plugins", "Help"}
+
         self._enable_dark_title_bar()
 
     def _enable_dark_title_bar(self):
@@ -88,6 +101,33 @@ class ItviewMainWindow(QtWidgets.QMainWindow):
 
     def get_core_view(self):
         return self._viewport_widget
+
+    def get_menu(self, name):
+        """Return the QMenu named *name*, creating it on demand.
+
+        Pre-existing menus ("Itview", "Session", "Plugins") are returned
+        from the cache. New menus are inserted before the first tail menu
+        ("Plugins", "Help") so the bar stays: … dynamic menus … Plugins Help.
+        """
+        menu = self._menus.get(name)
+        if menu is not None:
+            return menu
+
+        # Find the first tail-menu action in the bar to insert before.
+        before_action = None
+        for action in self.menuBar().actions():
+            if action.text() in self._tail_menu_names:
+                before_action = action
+                break
+
+        new_menu = QtWidgets.QMenu(name, self)
+        if before_action is not None:
+            self.menuBar().insertMenu(before_action, new_menu)
+        else:
+            self.menuBar().addMenu(new_menu)
+
+        self._menus[name] = new_menu
+        return new_menu
 
     def get_file_menu(self):
         return self._file_menu

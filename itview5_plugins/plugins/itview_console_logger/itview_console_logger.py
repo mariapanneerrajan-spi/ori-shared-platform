@@ -52,7 +52,7 @@ class ItviewConsoleLogger(QtCore.QObject):
         self.__toggle_action = self.__dock.toggleViewAction()
         self.__toggle_action.setShortcut(QtGui.QKeySequence("Ctrl+`"))
         self.__toggle_action.setProperty("hotkey_editor", True)
-        plugins_menu = self.__main_window.get_plugins_menu()
+        plugins_menu = self.__main_window.get_menu("Plugins")
         plugins_menu.addAction(self.__toggle_action)
 
         # 3. Attach logging handler to the RPA logger.

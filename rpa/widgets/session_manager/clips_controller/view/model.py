@@ -94,6 +94,7 @@ class Model(QtCore.QAbstractTableModel):
         self.__curr_clip_icon = QtGui.QIcon(QtGui.QPixmap(":curclip.png"))
         self.__blank_icon = QtGui.QIcon(QtGui.QPixmap(":blank.png"))
         self.__clip_custom_cache = {}  # {clip_id: {"is_tm": bool, "clip_color": tuple|None}}
+        self.__title_thumbnail_cache = {}  # {clip_id: QPixmap}
         self.update_playlist()
 
     @property
@@ -145,16 +146,21 @@ class Model(QtCore.QAbstractTableModel):
                 if type(thumbnail) is QtGui.QPixmap:
                     self.dataChanged.emit(index, index, QtCore.Qt.DecorationRole)
             if is_tm:
-                title_media_properties = self.__session_api.get_custom_clip_attr(
-                    clip, "title_media_properties")
-                if title_media_properties is not None:
-                    _, tmp = title_media_properties
-                    bkg_color = tmp.get("background_color", (0.0, 0.0, 0.0, 1.0))
-                    text_color = tmp.get("text_color") if tmp.get("text") else None
-                    thumbnail_pixmap = self.__thumbnail_loader.create_title_thumbnail(
-                        THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, bkg_color, text_color)
+                cached = self.__title_thumbnail_cache.get(clip)
+                if cached is not None:
+                    thumbnail_pixmap = cached
                 else:
-                    thumbnail_pixmap = None
+                    title_media_properties = self.__session_api.get_custom_clip_attr(
+                        clip, "title_media_properties")
+                    if title_media_properties is not None:
+                        _, tmp = title_media_properties
+                        bkg_color = tmp.get("background_color", (0.0, 0.0, 0.0, 1.0))
+                        text_color = tmp.get("text_color") if tmp.get("text") else None
+                        thumbnail_pixmap = self.__thumbnail_loader.create_title_thumbnail(
+                            THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, bkg_color, text_color)
+                        self.__title_thumbnail_cache[clip] = thumbnail_pixmap
+                    else:
+                        thumbnail_pixmap = None
             else:
                 thumbnail_pixmap = self.__thumbnail_loader.request_thumbnail(value, callback)
         else:
@@ -240,6 +246,7 @@ class Model(QtCore.QAbstractTableModel):
         self.__active_clips = \
             set(self.__session_api.get_active_clips(self.__playlist))
         self.__clip_custom_cache = {}
+        self.__title_thumbnail_cache = {}
         for clip_id in clips:
             self.__clip_custom_cache[clip_id] = {
                 "is_tm": bool(self.__session_api.get_custom_clip_attr(

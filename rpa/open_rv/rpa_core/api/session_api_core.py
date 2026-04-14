@@ -503,7 +503,6 @@ class SessionApiCore(QtCore.QObject):
                 set_frame(self.__session.get_clip(active_clip_ids[0]))
 
     def set_active_clips(self, playlist_id, clip_ids):
-        commands.stop()
         current_frame = commands.frame()
         playlist = self.__session.get_playlist(playlist_id)
         playlist.set_active_clips(clip_ids)

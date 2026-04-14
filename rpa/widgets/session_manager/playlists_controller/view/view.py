@@ -1,6 +1,6 @@
 try:
     from PySide2 import QtCore, QtGui, QtWidgets
-except ImportError:
+except:
     from PySide6 import QtCore, QtGui, QtWidgets
 from rpa.widgets.session_manager.playlists_controller.view.item_delegate \
     import ItemDelegate
@@ -67,7 +67,9 @@ class View(QtWidgets.QListView):
         index = self.indexAt(event.pos())
         if index.isValid():
             self.edit(index)
-        super().mouseDoubleClickEvent(event)
+            event.accept()
+        else:
+            super().mouseDoubleClickEvent(event)
 
     def mouseReleaseEvent(self, event):
         if event.button() == QtCore.Qt.MiddleButton and \

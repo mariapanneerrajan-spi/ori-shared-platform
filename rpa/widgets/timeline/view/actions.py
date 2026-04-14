@@ -1,7 +1,7 @@
 try:
     from PySide2 import QtCore, QtGui, QtWidgets
     from PySide2.QtWidgets import QAction, QActionGroup
-except ImportError:
+except:
     from PySide6 import QtCore, QtGui, QtWidgets
     from PySide6.QtGui import QAction, QActionGroup
 from rpa.widgets.timeline.view import svg
@@ -100,8 +100,7 @@ class Actions(QtCore.QObject):
             QtGui.QKeySequence("Ctrl+Shift+R"))
         self.toggle_audio_scrubbing_action.setCheckable(True)
         self.toggle_audio_scrubbing_action.triggered.connect(
-            lambda state: self.SIG_AUDIO_SCRUBBING_TOGGLED.emit(state)
-        )
+            lambda state: self.toggle_audio_scrubbing(state))
 
         # Playback Modes
         self.playback_repeat_action = QAction("Playback Repeat", checkable=True)
@@ -186,6 +185,12 @@ class Actions(QtCore.QObject):
         self.update_volume_button_icon(self.volume_slider.value(), checked)
         self.blockSignals(False)
         self.SIG_MUTE_TOGGLED.emit(checked)
+
+    def toggle_audio_scrubbing(self, state:bool):
+        self.blockSignals(True)
+        self.toggle_audio_scrubbing_action.setChecked(state)
+        self.blockSignals(False)
+        self.SIG_AUDIO_SCRUBBING_TOGGLED.emit(state)
 
     def set_volume(self, volume, emit_signal=True):
         if self.volume_slider.value() != volume:

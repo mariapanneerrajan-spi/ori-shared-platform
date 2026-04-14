@@ -1,7 +1,7 @@
 try:
     from PySide2 import QtCore, QtGui, QtWidgets
     from PySide2.QtWidgets import QAction, QActionGroup
-except ImportError:
+except:
     from PySide6 import QtCore, QtGui, QtWidgets
     from PySide6.QtGui import QAction, QActionGroup
 from rpa.widgets.timeline.view.line_edit import TimelineLineEdit
@@ -26,21 +26,26 @@ class TimelineRange(QtWidgets.QToolBar):
             QtCore.QRegularExpression("-?\\d+"), None)
 
         self.__range_scope = range_scope
-        self.__range_scope_action_group = action_group = QActionGroup(self)
+        self.__range_scope_mode_ag = action_group = QActionGroup(self)
         self.__range_scope_seq_action = QAction("Sequence", action_group)
         self.__range_scope_seq_action.setCheckable(True)
+        self.__range_scope_seq_action.setProperty("mode", 2)
         self.__range_scope_clip_action = QAction("Clip", action_group)
         self.__range_scope_clip_action.setCheckable(True)
+        self.__range_scope_clip_action.setProperty("mode", 1)
         action_group.setExclusive(True)
         action_group.triggered.connect(self.__range_scope_selected)
 
         self.__range_display_mode_ag = action_group = QActionGroup(self)
         self.__range_display_mode_frames_action = QAction("Frames", action_group)
         self.__range_display_mode_frames_action.setCheckable(True)
+        self.__range_display_mode_frames_action.setProperty("mode", 1)
         self.__range_display_mode_timecode_action = QAction("Timecode", action_group)
         self.__range_display_mode_timecode_action.setCheckable(True)
+        self.__range_display_mode_timecode_action.setProperty("mode", 2)
         self.__range_display_mode_feet_action = QAction("Feet", action_group)
         self.__range_display_mode_feet_action.setCheckable(True)
+        self.__range_display_mode_feet_action.setProperty("mode", 3)
         action_group.setExclusive(True)
         action_group.triggered.connect(self.__range_display_mode_selected)
 
@@ -120,6 +125,19 @@ class TimelineRange(QtWidgets.QToolBar):
         key_out = self.__get_clip_frame(self.__end_frame_text)
         self.SIG_END_FRAME_RANGE_CHANGED.emit(key_out)
 
+    def get_range_scope(self):
+        action = self.__range_scope_mode_ag.checkedAction()
+        mode = action.property("mode") if action else 0
+        return mode
+
+    def set_range_scope(self, mode:int):
+        for action in self.__range_scope_mode_ag.actions():
+            mode_value = action.property("mode")
+            if mode == mode_value:
+                action.setChecked(True)
+                self.__range_scope_selected(action)
+                break
+
     def __range_scope_selected(self, action):
         if action is self.__range_scope_seq_action:
             self.__range_scope.set_sequence_scope()
@@ -131,6 +149,19 @@ class TimelineRange(QtWidgets.QToolBar):
             self.__enable_range_cur(self.__range_scope.is_display_mode_frame())
 
         self.SIG_RANGE_SCOPE_CHANGED.emit()
+
+    def get_range_display(self):
+        action = self.__range_display_mode_ag.checkedAction()
+        mode = action.property("mode") if action else 0
+        return mode
+
+    def set_range_display(self, mode:int):
+        for action in self.__range_display_mode_ag.actions():
+            mode_value = action.property("mode")
+            if mode == mode_value:
+                action.setChecked(True)
+                self.__range_display_mode_selected(action)
+                break
 
     def __range_display_mode_selected(self, action):
         display_text = ' 00000 '

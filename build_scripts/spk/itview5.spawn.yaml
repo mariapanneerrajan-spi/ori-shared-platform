@@ -1,0 +1,10 @@
+command: /spfs/bin/itview5
+entrypoint: ''
+kind: SPK
+allow_prerelease: true
+
+overlay_tags:
+  - spawn/overlays/itview5_plugins/spi/itview_dev
+
+packages:
+  - itview5/0.8.2

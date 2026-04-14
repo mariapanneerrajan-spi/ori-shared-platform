@@ -17,7 +17,7 @@ from rpa.session_state.color_corrections import \
     ColorTimer, Grade, ColorCorrection
 try:
     from PySide2 import QtCore
-except ImportError:
+except:
     from PySide6 import QtCore
 from typing import List, Union, Optional, Dict, Tuple
 
@@ -159,6 +159,37 @@ class ColorApi(QtCore.QObject):
             int : Integeter denoting the current color channel.
         """
         return self.__delegate_mngr.call(self.get_channel)
+
+    def set_channel_order(self, channel_order:str) -> bool:
+        """
+        Sets the re-ordering of RGBA channels just before display.
+        Changes affect all sources globally since it is a display-level operation.
+        The channel ordering system uses a 4-character string where each
+        character can be one of [RGBAL01].
+        For example:
+        "RGBA": Standard RGB with alpha
+        "GRBA": Swaps red and green channels
+        "00RG": Sets first two channels to 0.0, uses red and green for last two
+        "R000": Shows only red channel as grayscale
+        "LRGB": where L is the Luminance.
+
+        Args:
+            channel_order (str): Four character string using characters [RGBAL01].
+                                 Eg. 'GRBA' or 'BRAG' or '0G0A'
+
+        Returns:
+            (bool) : True if success False otherwise
+        """
+        return self.__delegate_mngr.call(self.set_channel_order, [channel_order])
+
+    def get_channel_order(self) -> str:
+        """
+        Get the current color channel order set.
+
+        Returns:
+            str : Current color channel order.
+        """
+        return self.__delegate_mngr.call(self.get_channel_order)
 
     def set_fstop(self, value) -> bool:
         """
@@ -755,6 +786,22 @@ class ColorApi(QtCore.QObject):
         """
         return self.__delegate_mngr.call(self.set_ro_ccs, [ccs])
 
+    def set_frame_ro_ccs(self, clip_id:str, frame:int, ccs:list):
+        """
+        Sets the read-only color corrections for a specific frame.
+
+        This method replaces any existing read-only color corrections on the
+        specified frame with the provided list of color-correction entries.
+
+        Args:
+            clip_id (str): The identifier of the clip containing the target frame.
+            frame (int): The frame number on which the read-only color corrections
+                should be set.
+            ccs (list): A list of color-correction dictionaries or objects that
+                define the new read-only color correction values.
+        """
+        return self.__delegate_mngr.call(self.set_frame_ro_ccs, [clip_id, frame, ccs])
+
     def get_ro_ccs(
         self, clip_id:str, frame:Optional[int]=None)->List[ColorCorrection]:
         """
@@ -802,6 +849,24 @@ class ColorApi(QtCore.QObject):
             bool : True if sucess, False otherwise.
         """
         return self.__delegate_mngr.call(self.set_rw_ccs, [ccs])
+
+    def update_frame_rw_ccs(self, clip_id:str, frame:int, ccs:list):
+        """
+        Updates the read-write color corrections for a specific frame.
+
+        This method applies the provided color-correction settings (ccs)
+        to a given frame within the specified clip. New color corrections will
+        be added. Existing color corrections will be updated. And color
+        corrections which are missing the specifies ccs list will be removed.
+
+        Args:
+            clip_id (str): Identifier of the clip whose frame color corrections
+                should be updated.
+            frame (int): The frame number to which the color corrections apply.
+            ccs (list): A list of color-correction objects
+                representing the new read-write color correction values.
+        """
+        return self.__delegate_mngr.call(self.update_frame_rw_ccs, [clip_id, frame, ccs])
 
     def get_rw_ccs(
         self, clip_id:str, frame:Optional[int]=None)->List[ColorCorrection]:

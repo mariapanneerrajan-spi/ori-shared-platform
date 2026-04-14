@@ -83,26 +83,29 @@ class Timeline:
         self.__seq_to_clip.clear()
         self.__clip_to_seq.clear()
         playlist = self.__session.get_playlist(self.__session.viewport.fg)
-        clips = []
-        active_clip_ids = playlist.active_clip_ids
-        for clip_id in active_clip_ids:
-            clips.append(self.__session.get_clip(clip_id))
+        if playlist:
+            clips = []
+            active_clip_ids = playlist.active_clip_ids
+            for clip_id in active_clip_ids:
+                clips.append(self.__session.get_clip(clip_id))
 
-        seq_frame = 1
-        for clip in clips:
-            local_frame_map = clip.get_local_frame_map()
-            src_frames = clip.get_source_frames()
-
-            for local_frame, clip_frame in local_frame_map.items():
-                src_frame = src_frames[local_frame - 1]
-                self.__seq_to_clip[seq_frame] = (clip.id, clip_frame, local_frame)
-                clip_to_seq = self.__clip_to_seq.setdefault(clip.id, {})
-                clip_to_seq.setdefault(clip_frame, []).append(seq_frame)
-                seq_frame += 1
+            seq_frame = 1
+            last_clip_index = len(clips) - 1
+            for i, clip in enumerate(clips):
+                if len(clips) > 1 and i != last_clip_index:
+                    src_frames = clip.get_timeline_frames()
+                else:
+                    src_frames = clip.get_source_frames()
+                for local_frame, clip_frame in enumerate(src_frames, 1):
+                    self.__seq_to_clip[seq_frame] = (clip.id, clip_frame, local_frame)
+                    clip_to_seq = self.__clip_to_seq.setdefault(clip.id, {})
+                    clip_to_seq.setdefault(clip_frame, []).append(seq_frame)
+                    seq_frame += 1
 
         self.__current_frame = max(
             self.__get_start_frame(),
             min(self.__current_frame, self.__get_end_frame()))
+
 
         return True
 

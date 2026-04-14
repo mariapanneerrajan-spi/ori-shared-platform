@@ -5,7 +5,7 @@ from rv import commands as rvc
 from rv import extra_commands as rve
 try:
     from PySide2 import QtCore
-except ImportError:
+except:
     from PySide6 import QtCore
 from rpa.open_rv.rpa_core.api.utils import itview_to_rv
 from rpa.session_state.color_corrections import ColorTimer, Grade
@@ -246,6 +246,24 @@ class ColorApiCore(QtCore.QObject):
 
     def get_channel(self):
         return self.__session.viewport.color_channel
+
+    def set_channel_order(self, channel_order):
+        channel_map = {
+                    'R': 0.0, 'r': 0.0,
+                    'G': 1.0, 'g': 1.0,
+                    'B': 2.0, 'b': 2.0,
+                    'A': 3.0, 'a': 3.0,
+                    'L': 4.0, 'l': 4.0,
+                    '0': 5.0,
+                    '1': 6.0}
+
+        float_array = []
+        for char in channel_order[:4]:  # Only take first 4 chars
+            float_array.append(channel_map.get(char, 0.0))
+        self.__set_color_channel_order(float_array)
+
+    def get_channel_order(self):
+        return self.__session.viewport.color_channel_order
 
     def set_fstop(self, value:float):
         self.__session.viewport.fstop = value
@@ -505,6 +523,15 @@ class ColorApiCore(QtCore.QObject):
                 self.SIG_CCS_MODIFIED.emit(current_clip, None)
         return True
 
+    def set_frame_ro_ccs(self, clip_id, frame, ccs):
+        clip = self.__session.get_clip(clip_id)
+        if clip:
+            clip.color_corrections.set_frame_ro_ccs(frame, ccs)
+        current_clip = self.__session.viewport.current_clip
+        self._refresh(clip_id)
+        if current_clip == clip_id:
+            self.SIG_CCS_MODIFIED.emit(current_clip, None)
+
     def set_rw_ccs(self, rw_ccs):
         for clip_id, ccs in rw_ccs.items():
             clip = self.__session.get_clip(clip_id)
@@ -516,6 +543,15 @@ class ColorApiCore(QtCore.QObject):
             if current_clip == clip:
                 self.SIG_CCS_MODIFIED.emit(current_clip, None)
         return True
+
+    def update_frame_rw_ccs(self, clip_id, frame, ccs):
+        clip = self.__session.get_clip(clip_id)
+        if clip:
+            clip.color_corrections.update_frame_rw_ccs(frame, ccs)
+        current_clip = self.__session.viewport.current_clip
+        self._refresh(clip_id)
+        if current_clip == clip_id:
+            self.SIG_CCS_MODIFIED.emit(current_clip, None)
 
     def get_ro_ccs(self, clip_id:str, frame=None):
         clip = self.__session.get_clip(clip_id)
@@ -741,8 +777,8 @@ class ColorApiCore(QtCore.QObject):
         if source is None:
             return
         clip_id = self.__session.viewport.current_clip
-        if not clip_id: return
         clip = self.__session.get_clip(clip_id)
+        if clip is None: return
         clip_ccs = []
         if self.__session.viewport.feedback.are_clip_ccs_visible:
             clip_ccs = clip.color_corrections.clip_ccs
@@ -849,8 +885,8 @@ class ColorApiCore(QtCore.QObject):
         if source is None:
             return
         clip_id = self.__session.viewport.current_clip
-        if not clip_id: return
         clip = self.__session.get_clip(clip_id)
+        if clip is None: return
         ccs = []
         ccs = clip.color_corrections.frame_ccs.get(frame, [])
         ccs = [clip.color_corrections.id_to_cc[cc_id] for cc_id in ccs]
@@ -922,7 +958,6 @@ class ColorApiCore(QtCore.QObject):
         groups = rvc.nodesOfType("RVViewPipelineGroup")
         for group in groups:
             nodes = rvc.getStringProperty(group + ".pipeline.nodes")
-
             if not ("ChannelSelect" in nodes):
                 nodes += ["ChannelSelect"]
                 rvc.setStringProperty(group + ".pipeline.nodes", nodes, True)
@@ -930,6 +965,18 @@ class ColorApiCore(QtCore.QObject):
             nodes = rvc.nodesOfType("ChannelSelect")
             for node in nodes:
                 rvc.setIntProperty(node + ".parameters.channel", [mode], True)
+
+    def __set_color_channel_order(self, order):
+        groups = rvc.nodesOfType("RVViewPipelineGroup")
+        for group in groups:
+            nodes = rvc.getStringProperty(group + ".pipeline.nodes")
+            if "ChannelOrder" not in nodes:
+                nodes += ["ChannelOrder"]
+                rvc.setStringProperty(group + ".pipeline.nodes", nodes, True)
+
+            nodes = rvc.nodesOfType("ChannelOrder")
+            for node in nodes:
+                rvc.setFloatProperty(node + ".parameters.channelOrder", order, True)
 
     def _refresh(self, clip_id):
         cc_node = self.__get_color_correct_node(clip_id)

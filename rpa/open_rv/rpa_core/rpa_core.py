@@ -20,6 +20,8 @@ class RpaCore:
             session, self.__session_api,
             self.__annotation_api, self.__color_api)
 
+        self.__session_api.set_timeline_api(self.__timeline_api)
+
     @property
     def session_api(self):
         return self.__session_api

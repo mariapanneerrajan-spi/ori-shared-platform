@@ -1,7 +1,7 @@
 try:
-    from PySide2 import QtCore, QtWidgets
-except ImportError:
-    from PySide6 import QtCore, QtWidgets
+    from PySide2 import QtCore, QtGui, QtWidgets
+except:
+    from PySide6 import QtCore, QtGui, QtWidgets
 from rpa.widgets.session_manager.splitter import Splitter
 from rpa.widgets.session_manager.toolbars.playlists_toolbar.playlists_toolbar \
     import PlaylistsToolbar
@@ -15,6 +15,11 @@ from enum import Enum
 import json
 from rpa.session_state.annotations import Annotation
 from rpa.session_state.color_corrections import ColorCorrection
+from rpa.widgets.sub_widgets.title_media_editor import TitleMediaEditor
+from rpa.utils.rv_virtual_media_generator \
+    import RVVirtualMediaGenerator, VirtualMediaOption, VirtualMediaType
+from rpa.utils.rv_overlays import OverlayType, TextOverlay
+from rpa.utils.utils import find_font_path
 import uuid
 
 
@@ -49,7 +54,7 @@ class SessionManager:
         self.__config_api = rpa.config_api
 
         self.__playlists_toolbar.SIG_CREATE.connect(
-            self.__playlists_controller.create)
+            self.__create_playlist)
         self.__playlists_toolbar.SIG_DELETE.connect(
             self.__playlists_controller.delete)
         self.__playlists_toolbar.SIG_DELETE_PERMANENTLY.connect(
@@ -78,6 +83,7 @@ class SessionManager:
         self.__clips_toolbar.SIG_MOVE_BOTTOM.connect(
             self.__clips_controller.move_bottom)
 
+        self.__playlists_controller.SIG_CREATE.connect(self.__create_playlist)
         self.__playlists_controller.SIG_CUT.connect(self.__cut_playlists)
         self.__playlists_controller.SIG_COPY.connect(self.__copy_playlists)
         self.__playlists_controller.SIG_PASTE.connect(self.__paste_playlists)
@@ -89,11 +95,16 @@ class SessionManager:
         self.__clips_controller.SIG_COPY.connect(self.__copy_clips)
         self.__clips_controller.SIG_PASTE.connect(self.paste_clips)
         self.__clips_controller.SIG_MOVE.connect(self.__move_clips)
+        self.__clips_controller.SIG_ADD_TITLE.connect(self.__add_title)
+        self.__clips_controller.SIG_EDIT_TITLE.connect(self.__edit_title)
+
+        self.__vm_generator = RVVirtualMediaGenerator(self.__rpa.session_api)
 
         self.__load_preferences()
 
         self.__injected_media_path_attr_ids = []
         self.__get_media_path_for_paste = None
+        self.__auto_rename = False
 
     @property
     def view(self):
@@ -132,6 +143,12 @@ class SessionManager:
         self.__config_api.endGroup()
 
         self.__clips_controller.save_preferences()
+
+    def set_auto_rename(self, state:bool):
+        self.__auto_rename = state
+
+    def __create_playlist(self):
+        self.__playlists_controller.create(auto_rename=self.__auto_rename)
 
     def __cut_playlists(self):
         self.__copy_playlists()
@@ -193,6 +210,20 @@ class SessionManager:
         if fg_playlist_id != playlist_id:
             self.__rpa.session_api.set_fg_playlist(playlist_id)
         self.__paste_clips(playlist_id, clips_data)
+
+    def add_to_playlist(self, clips, playlist_name=None):
+        if playlist_name is None:
+            playlist_name = "New Playlist" 
+
+        playlist_id = self.__rpa.session_api.create_playlists([playlist_name])[0]
+        self.__rpa.session_api.create_clips(playlist_id, clips)
+        self.__rpa.session_api.set_fg_playlist(playlist_id)
+
+        all_playlist_ids = self.__rpa.session_api.get_playlists()
+        for playlist_id in all_playlist_ids:
+            clips = self.__rpa.session_api.get_clips(playlist_id)
+            if not clips:
+                self.__rpa.session_api.delete_playlists([playlist_id])
 
     def __cut_clips(self):
         self.__copy_clips()
@@ -389,3 +420,92 @@ class SessionManager:
 
     def inject_media_path_attr_ids(self, attr_ids):
         self.__injected_media_path_attr_ids = attr_ids[:]
+
+    def __add_title(self, index:int):
+        fg_playlist = self.__rpa.session_api.get_fg_playlist()
+        clip_ids = self.__rpa.session_api.get_clips(fg_playlist)
+
+        if index == -1 or index >= len(clip_ids):
+            index = None
+        else:
+            index = index + 1
+
+        self.__edit_title(tm_clip_id=None, index=index)
+
+    def __edit_title(self, tm_clip_id=None, index=None):
+        tm_id = None
+
+        if tm_clip_id is None:
+            title_media_editor = TitleMediaEditor()
+        else:
+            tm_id, tmp = self.__rpa.session_api.get_custom_clip_attr(
+                tm_clip_id, "title_media_properties")
+            if not tmp:
+                title_media_editor = TitleMediaEditor()
+            else:
+                text = tmp.get("text")
+                text_font_str = tmp.get("text_font")
+                text_font = QtGui.QFont()
+                text_font.fromString(text_font_str)
+                text_alignment = tmp.get("text_alignment")
+                text_color = QtGui.QColor.fromRgbF(*tmp.get("text_color"))
+                background_color = QtGui.QColor.fromRgbF(*tmp.get("background_color"))
+
+                title_media_editor = TitleMediaEditor(
+                    text=text,
+                    text_font=text_font,
+                    text_alignment=text_alignment,
+                    text_color=text_color,
+                    background_color=background_color
+                )
+
+        if title_media_editor.exec_():
+            tmp = title_media_editor.get_properties()
+        else:
+            tmp = {}
+
+        if not tmp:
+            return
+
+        background_color = tmp.get("background_color")
+        bkg_r, bkg_g, bkg_b, bkg_a = (round(v, 6) for v in background_color)
+
+        vm_attrs = {
+            VirtualMediaOption.red: bkg_r, VirtualMediaOption.green: bkg_g,
+            VirtualMediaOption.blue: bkg_b, VirtualMediaOption.alpha: bkg_a,
+            VirtualMediaOption.width: 3072, VirtualMediaOption.height: 2048,
+            VirtualMediaOption.start: 1, VirtualMediaOption.end: 24
+            }
+        vm_path = self.__vm_generator.get_virtual_media_path(
+            vm_type=VirtualMediaType.solid, options=vm_attrs)
+
+        if tm_clip_id is None:
+            playlist_id = self.__rpa.session_api.get_fg_playlist()
+            tm_clip_id = self.__rpa.session_api.create_clips(
+                playlist_id, [vm_path], index=index)[0]
+            self.__rpa.session_api.set_custom_clip_attr(tm_clip_id, "title_media", True)
+        else:
+            self.__rpa.session_api.set_clip_path(tm_clip_id, vm_path)
+
+        # title properties
+        text = tmp.get("text")
+        text_font_str = tmp.get("text_font")
+        text_font = QtGui.QFont()
+        text_font.fromString(text_font_str)
+        font_path = find_font_path(text_font)
+        text_size = text_font.pointSize()
+        text_color = tmp.get("text_color")
+        text_r, text_g, text_b, text_a = (round(v, 6) for v in text_color)
+
+        text_overlay = TextOverlay(
+            text=text,
+            font_path=font_path,
+            size=text_size,
+            color=(text_r, text_g, text_b, text_a),
+            position = (0.5, 0.5) # center
+            )
+        tm_id = self.__rpa.session_api.set_media_overlay(
+            tm_clip_id, 1, text_overlay.to_json(), tm_id)
+
+        self.__rpa.session_api.set_custom_clip_attr(
+            tm_clip_id, "title_media_properties", (tm_id, tmp))

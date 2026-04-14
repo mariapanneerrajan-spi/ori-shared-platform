@@ -2,12 +2,12 @@ import math
 
 try:
     from PySide2 import QtCore, QtGui, QtWidgets
-except ImportError:
+except:
     from PySide6 import QtGui, QtCore, QtWidgets
 
 from rpa.widgets.image_controller.actions import Actions
 from rpa.widgets.image_controller import constants as C
-from rpa.widgets.image_controller.slider_toolbar import SliderToolBar
+from rpa.widgets.sub_widgets.slider_toolbar import SliderToolBar
 
 
 class ImageController(QtCore.QObject):
@@ -21,7 +21,6 @@ class ImageController(QtCore.QObject):
 
         self.__current_fstop_val = self.__color_api.get_fstop()
         self.__current_gamma_val = self.__color_api.get_gamma()
-        self.__current_rotation_val = self.__viewport_api.get_rotation()
 
         self.actions = Actions()
         self.__create_tool_bar()
@@ -32,8 +31,6 @@ class ImageController(QtCore.QObject):
             self.__color_api.set_fstop, self.__post_set_fstop)
         self.__color_api.delegate_mngr.add_post_delegate(
             self.__color_api.set_gamma, self.__post_set_gamma)
-        self.__viewport_api.delegate_mngr.add_post_delegate(
-            self.__viewport_api.set_rotation, self.__post_set_rotation)
 
         # FStop
         self.actions.fstop_up.triggered.connect(self.__fstop_up)
@@ -55,21 +52,9 @@ class ImageController(QtCore.QObject):
         self.gamma_slider.SIG_RESET.connect(self.__gamma_reset)
         self.gamma_slider.SIG_TOOLBAR_VISIBLE.connect(self.__set_gamma_visibility)
 
-        # Image Rotation
-        self.actions.rotation_reset.triggered.connect(lambda: self.__update_rotation(0))
-        self.actions.rotate_90.triggered.connect(lambda: self.__update_rotation(90))
-        self.actions.rotate_180.triggered.connect(lambda: self.__update_rotation(180))
-        self.actions.rotate_270.triggered.connect(lambda: self.__update_rotation(270))
-        self.actions.rotate_up_10.triggered.connect(lambda: self.__update_rotation(self.__current_rotation_val + 10))
-        self.actions.rotate_down_10.triggered.connect(lambda: self.__update_rotation(self.__current_rotation_val - 10))
-        self.actions.rotation_slider.triggered.connect(lambda state:self.__toggle_image_rot_slider(state))
-        self.image_rot_slider.SIG_SLIDER_VALUE_CHANGED.connect(self.__set_image_rot_value)
-        self.image_rot_slider.SIG_RESET.connect(lambda: self.__update_rotation(0))
-        self.image_rot_slider.SIG_TOOLBAR_VISIBLE.connect(self.__set_image_rot_visibility)
-
     def __create_tool_bar(self):
         self.fstop_slider = SliderToolBar(
-                                    "FStop Control", "F-Stop",
+                                    "F-Stop Control", "F-Stop",
                                     min_val=-10,
                                     max_val=10,
                                     value=0,
@@ -86,16 +71,6 @@ class ImageController(QtCore.QObject):
         self.__main_window.addToolBar(
                 QtCore.Qt.BottomToolBarArea, self.gamma_slider)
         self.gamma_slider.set_slider_value(self.__current_gamma_val)
-
-        self.image_rot_slider = SliderToolBar(
-                                    "Image Rotation", "Rotation",
-                                    min_val=-360,
-                                    max_val=360,
-                                    value=0,
-                                    interval=90)
-        self.__main_window.addToolBar(
-                QtCore.Qt.BottomToolBarArea, self.image_rot_slider)
-        self.gamma_slider.set_slider_value(self.__current_rotation_val)
 
     # FStop controls
     def __set_fstop_visibility(self):
@@ -165,25 +140,6 @@ class ImageController(QtCore.QObject):
         self.__current_gamma_val = C.GAMMA_RESET
         self.__color_api.set_gamma(self.__current_gamma_val)
 
-    # Image rotation
-    def __set_image_rot_visibility(self):
-        is_visible = self.image_rot_slider.isVisible()
-        self.actions.rotation_slider.setChecked(is_visible)
-        self.__toggle_image_rot_slider(is_visible)
-
-    def __toggle_image_rot_slider(self, state):
-        if state:
-            self.image_rot_slider.show()
-        else:
-            self.image_rot_slider.hide()
-
-    def __set_image_rot_value(self, angle):
-        if angle is None: return
-        self.__viewport_api.set_rotation(angle)
-
-    def __update_rotation(self, angle):
-        self.__viewport_api.set_rotation(angle)
-
     def __post_set_fstop(self, out, value):
         self.__current_fstop_val = value
         self.fstop_slider.set_slider_value(value)
@@ -193,9 +149,3 @@ class ImageController(QtCore.QObject):
         self.__current_gamma_val = value
         self.gamma_slider.set_slider_value(value)
         self.__viewport_api.display_msg("Gamma: %.2f" % value)
-
-    def __post_set_rotation(self, out, angle):
-        self.__current_rotation_val = angle
-        self.image_rot_slider.set_slider_value(angle)
-        self.__viewport_api.display_msg("Rotation: %d" % angle)
-

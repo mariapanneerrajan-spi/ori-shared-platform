@@ -1,6 +1,6 @@
 try:
     from PySide2 import QtCore
-except ImportError:
+except:
     from PySide6 import QtCore
 from rpa.widgets.session_manager.playlists_controller.view.view \
     import View
@@ -12,6 +12,7 @@ from rpa.utils.playlist_name_generator import PlaylistNameGenerator
 
 
 class PlaylistsController(QtCore.QObject):
+    SIG_CREATE = QtCore.Signal()
     SIG_CUT = QtCore.Signal()
     SIG_COPY = QtCore.Signal()
     SIG_PASTE = QtCore.Signal()
@@ -37,7 +38,7 @@ class PlaylistsController(QtCore.QObject):
             self.__selection_changed)
 
         self.__context_menu = ContextMenu(rpa, self.__view)
-        self.__context_menu.SIG_CREATE.connect(self.create)
+        self.__context_menu.SIG_CREATE.connect(self.SIG_CREATE)
         self.__context_menu.SIG_DUPLICATE.connect(self.SIG_DUPLICATE)
         self.__context_menu.SIG_CUT.connect(self.SIG_CUT)
         self.__context_menu.SIG_COPY.connect(self.SIG_COPY)
@@ -98,13 +99,17 @@ class PlaylistsController(QtCore.QObject):
         else:
             self.__session_api.set_bg_playlist(id)
 
-    def create(self):
+    def create(self, auto_rename=False):
         playlist_ids = self.__session_api.get_playlists()
         last_selected_playlist = playlist_ids[-1]
         index = playlist_ids.index(last_selected_playlist) + 1
         id = self.__session_api.create_playlists(
             [self.__name_generator.generate_name()], index=index)[0]
         self.__session_api.set_fg_playlist(id)
+
+        if auto_rename:
+            mindex = self.__model.index(index, 0)
+            self.__view.rename_requested(mindex)
 
     def delete(self):
         playlists = self.get_selected_playlists()

@@ -780,14 +780,20 @@ class SessionApiCore(QtCore.QObject):
             to_delete.setdefault(clip.playlist_id, []).append(clip.id)
 
         self.__delete_clips_permanently(ids)
+        attr_values_changed = []
         for playlist_id, clip_ids in to_delete.items():
             playlist = self.__session.get_playlist(playlist_id)
             playlist.delete_clips(clip_ids)
             self.__update_clip_nodes_in_playlist_node(playlist)
             for play_order, clip_id in enumerate(playlist.clip_ids):
                 clip = self.__session.get_clip(clip_id)
-                clip.set_attr_value("play_order", play_order + 1)
+                value = play_order + 1
+                clip.set_attr_value("play_order", value)
+                attr_values_changed.append(
+                    (playlist_id, clip_id, "play_order", value))
 
+        if attr_values_changed:
+            self.SIG_ATTR_VALUES_CHANGED.emit(attr_values_changed)
         for playlist_id in to_delete.keys():
             self.SIG_PLAYLIST_MODIFIED.emit(playlist_id)
         self.__update_current_clip()

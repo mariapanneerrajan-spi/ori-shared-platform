@@ -239,12 +239,66 @@ class Model(QtCore.QAbstractTableModel):
         return self.__session_api.get_attr_data_type(attr)
 
     def update_playlist(self):
+        new_playlist = self.__session_api.get_fg_playlist()
+        new_clips = self.__session_api.get_clips(new_playlist)
+
+        if new_playlist != self.__playlist:
+            # Playlist switch — full reset required
+            self.__full_reset(new_playlist, new_clips)
+            return
+
+        old_clips = list(self.__clips)
+        old_set = set(old_clips)
+        new_set = set(new_clips)
+
+        if old_set == new_set and old_clips != new_clips:
+            # Same clips, different order — just update data
+            self.__clips.reset(new_clips)
+            self.__active_clips = \
+                set(self.__session_api.get_active_clips(self.__playlist))
+            play_order_col = self.__attrs.index("play_order")
+            if play_order_col is not None:
+                self.dataChanged.emit(
+                    self.index(0, 0),
+                    self.index(self.rowCount() - 1, self.columnCount() - 1))
+        elif new_set < old_set and list(new_set & old_set) == [c for c in new_clips if c in old_set]:
+            # Pure removal — clips removed but remaining order preserved
+            removed = old_set - new_set
+            # Remove in reverse order to keep indices valid
+            for row in sorted([old_clips.index(c) for c in removed], reverse=True):
+                self.beginRemoveRows(QtCore.QModelIndex(), row, row)
+                self.__clips.reset([c for c in list(self.__clips) if c != old_clips[row]])
+                self.endRemoveRows()
+            self.__active_clips = \
+                set(self.__session_api.get_active_clips(self.__playlist))
+            self.__update_custom_cache(new_clips)
+        elif new_set > old_set and list(old_set & new_set) == [c for c in new_clips if c in old_set]:
+            # Pure insertion — new clips added, existing order preserved
+            added = [(i, c) for i, c in enumerate(new_clips) if c not in old_set]
+            for offset, (row, clip_id) in enumerate(added):
+                self.beginInsertRows(QtCore.QModelIndex(), row, row)
+                # Rebuild the list up to this point
+                current = list(self.__clips)
+                current.insert(row, clip_id)
+                self.__clips.reset(current)
+                self.endInsertRows()
+            self.__active_clips = \
+                set(self.__session_api.get_active_clips(self.__playlist))
+            self.__update_custom_cache(new_clips)
+        else:
+            # Complex change — fall back to full reset
+            self.__full_reset(new_playlist, new_clips)
+
+    def __full_reset(self, playlist, clips):
         self.beginResetModel()
-        self.__playlist = self.__session_api.get_fg_playlist()
-        clips = self.__session_api.get_clips(self.__playlist)
+        self.__playlist = playlist
         self.__clips.reset(clips)
         self.__active_clips = \
             set(self.__session_api.get_active_clips(self.__playlist))
+        self.__update_custom_cache(clips)
+        self.endResetModel()
+
+    def __update_custom_cache(self, clips):
         self.__clip_custom_cache = {}
         self.__title_thumbnail_cache = {}
         for clip_id in clips:
@@ -254,7 +308,6 @@ class Model(QtCore.QAbstractTableModel):
                 "clip_color": self.__session_api.get_custom_clip_attr(
                     clip_id, "clip_color"),
             }
-        self.endResetModel()
 
     def update_current_clip_icon(self):
         play_order_column = self.__attrs.index("play_order")

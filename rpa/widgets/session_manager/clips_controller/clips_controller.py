@@ -223,6 +223,14 @@ class ClipsController(QtCore.QObject):
     def __attr_values_changed(self, attr_values):
         self.__model.update_attr_values(attr_values)
 
+    def get_selected_clip_ids(self):
+        ids = []
+        selected_rows = self.__view.table.selectionModel().selectedRows()
+        for index in selected_rows:
+            index = self.__view.table.model().mapToSource(index)
+            ids.append(self.__model.clips[index.row()])
+        return ids
+
     def __selection_changed(self):
         ids = []
         if len(self.__model.clips) > 0:

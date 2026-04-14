@@ -230,8 +230,10 @@ class SessionManager:
         self.__clips_controller.delete_permanently()
 
     def __copy_clips(self):
+        clip_ids = self.__clips_controller.get_selected_clip_ids()
+        if not clip_ids:
+            return
         playlist_id = self.__rpa.session_api.get_fg_playlist()
-        clip_ids = self.__rpa.session_api.get_active_clips(playlist_id)
         self.__dict_to_clipboard(
             self.__get_clips_data(playlist_id, clip_ids), "rpa/clips")
 

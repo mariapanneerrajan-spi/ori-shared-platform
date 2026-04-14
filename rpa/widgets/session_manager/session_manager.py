@@ -398,14 +398,13 @@ class SessionManager:
 
             if clip_data.get("color_corrections"):
                 if clip_data["color_corrections"].get("ro"):
-                    for frame, ccs in clip_data["color_corrections"]["ro"]:
-                        cc_objects = []
-                        for cc in ccs:
-                            color_correction = ColorCorrection()
-                            color_correction.__setstate__(cc)
-                            color_correction.id = uuid.uuid4().hex
-                            cc_objects.append(color_correction)
-                        ro_ccs.setdefault(clip_id, []).append((int(frame), cc_objects))
+                    for frame, cc_state in clip_data["color_corrections"]["ro"]:
+                        color_correction = ColorCorrection()
+                        color_correction.__setstate__(cc_state)
+                        color_correction.id = uuid.uuid4().hex
+                        frame = int(frame) if frame is not None else frame
+                        ro_ccs.setdefault(clip_id, []).append(
+                            (frame, [color_correction]))
 
                 if clip_data["color_corrections"].get("rw"):
                     for frame, cc in clip_data["color_corrections"]["rw"]:

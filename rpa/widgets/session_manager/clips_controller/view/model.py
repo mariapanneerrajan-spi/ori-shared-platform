@@ -40,17 +40,18 @@ class ProxyModel(QtCore.QSortFilterProxyModel):
                 return True
             elif isinstance(left_data, str) and isinstance(right_data, str):
                 if self.is_float(left_data) and self.is_float(right_data):
-                    return float(left_data) > float(right_data)
+                    return float(left_data) < float(right_data)
+                return left_data < right_data
             else:
-                return left_data > right_data
+                return left_data < right_data
 
         try:
-            return float(left_data) > float(right_data)
+            return float(left_data) < float(right_data)
         except (ValueError, TypeError):
             pass
 
         try:
-            return str(left_data) > str(right_data)
+            return str(left_data) < str(right_data)
         except (ValueError, TypeError):
             return True
 

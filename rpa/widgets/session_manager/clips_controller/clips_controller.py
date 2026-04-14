@@ -41,7 +41,7 @@ class ClipsController(QtCore.QObject):
         self.__config_api = rpa.config_api
         self.__session_api = rpa.session_api
         self.__rpa = rpa
-        self.__from_sel_change = False
+        self.__sel_change_playlist_id = None
 
         self.__view = View(parent)
         self.__model = Model(rpa)
@@ -211,8 +211,8 @@ class ClipsController(QtCore.QObject):
         self.__model.update_playlist()
 
     def __playlist_modified(self, playlist):
-        if self.__from_sel_change:
-            self.__from_sel_change = False
+        if playlist == self.__sel_change_playlist_id:
+            self.__sel_change_playlist_id = None
             return
         if self.__playlist != playlist: return
         self.__model.update_playlist()
@@ -235,7 +235,7 @@ class ClipsController(QtCore.QObject):
             else:
                 for row in range(len(self.__model.clips)):
                     ids.append(self.__model.clips[row])
-        self.__from_sel_change = True
+        self.__sel_change_playlist_id = self.__playlist
         self.__session_api.set_active_clips(self.__playlist, ids)
         self.__model.update_background_role()
 

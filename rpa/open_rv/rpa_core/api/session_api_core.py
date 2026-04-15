@@ -821,7 +821,7 @@ class SessionApiCore(QtCore.QObject):
     def get_current_clip(self):
         playlist = self.__session.get_playlist(self.__session.viewport.fg)
         if playlist is None or len(playlist.clip_ids) == 0:
-            self.__session.viewport.current_clip = None
+            return None
         clip = self.__session.get_clip(self.__session.viewport.current_clip)
         if clip: return self.__session.viewport.current_clip
         return
@@ -1155,11 +1155,6 @@ class SessionApiCore(QtCore.QObject):
             self.PRG_SET_ATTR_VALUE.emit(
                 num_of_attrs_set, num_of_attrs_to_set)
         self.PRG_SET_ATTR_VALUES_COMPLETED.emit()
-
-        # timeline update for when frame control attrs change
-        if any(attr_value[0] == self.__session.viewport.fg and \
-            attr_value[2] in ("key_in", "key_out") for attr_value in attr_values):
-            playlist = self.__session.get_playlist(self.__session.viewport.fg)
 
         self.SIG_ATTR_VALUES_CHANGED.emit(attr_values_set)
         return True

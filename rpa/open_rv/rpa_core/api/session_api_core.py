@@ -11,7 +11,6 @@ from rpa.open_rv.rpa_core.api.clip_attr_api_core.clip_attr_api_core \
 
 from rpa.open_rv.rpa_core.api.utils import image_to_rv, itview_to_rv
 from rpa.utils.rv_overlays import OverlayType, RectOverlay, TextOverlay
-from rpa.session_state.session import Session
 try:
     from pymu import MuSymbol
 except ImportError:
@@ -1289,8 +1288,7 @@ class SessionApiCore(QtCore.QObject):
 
                 attr_value = clip.get_attr_value(attr_id)
                 clip_attr_values.append((playlist_id, clip_id, attr_id, attr_value))
-
-            self.SIG_ATTR_VALUES_CHANGED.emit(clip_attr_values)
+        self.SIG_ATTR_VALUES_CHANGED.emit(clip_attr_values)
         return True
 
     def get_attr_keys(self, clip_id, attr_id):

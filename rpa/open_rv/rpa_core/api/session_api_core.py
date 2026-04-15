@@ -1409,9 +1409,10 @@ class SessionApiCore(QtCore.QObject):
                     if action is not None:
                         return action
                 return None
-            for action in widget.actions():
-                if action.text() == "Preferences...":
-                    return action
+            if callable(getattr(widget, 'actions', None)):
+                for action in widget.actions():
+                    if action.text() == "Preferences...":
+                        return action
             for child in widget.children():
                 if isinstance(child, QtWidgets.QWidget):
                     action = get_preferences_action(child)

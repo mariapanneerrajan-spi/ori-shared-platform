@@ -419,38 +419,43 @@ class SessionApiCore(QtCore.QObject):
         if num_of_clips_to_create == 0:
             return []
 
-        self.PRG_CLIPS_CREATION_STARTED.emit(num_of_clips_to_create)
+        cache_mode = commands.cacheMode()
+        commands.setCacheMode(commands.CacheOff)
+        try:
+            self.PRG_CLIPS_CREATION_STARTED.emit(num_of_clips_to_create)
 
-        playlist = self.__session.get_playlist(playlist_id)
-        playlist.create_clips(paths, ids, index)
+            playlist = self.__session.get_playlist(playlist_id)
+            playlist.create_clips(paths, ids, index)
 
-        clips_created = 0
-        for id, path in zip(ids, paths):
-            self.__create_clip_nodes(id, path)
-            clips_created += 1
-            self.PRG_CLIP_CREATED.emit(clips_created, num_of_clips_to_create)
-        self.PRG_CLIPS_CREATION_COMPLETED.emit()
+            clips_created = 0
+            for id, path in zip(ids, paths):
+                self.__create_clip_nodes(id, path)
+                clips_created += 1
+                self.PRG_CLIP_CREATED.emit(clips_created, num_of_clips_to_create)
+            self.PRG_CLIPS_CREATION_COMPLETED.emit()
 
-        attr_values_list = []
-        attr_values = self.__get_attr_values(
-            ids, self.__session.attrs_metadata.ids)
-        for clip_id, attr_ids in attr_values.items():
-            clip = self.__session.get_clip(clip_id)
-            for attr_id in attr_ids:
-                value = attr_values[clip_id][attr_id]
+            attr_values_list = []
+            attr_values = self.__get_attr_values(
+                ids, self.__session.attrs_metadata.ids)
+            for clip_id, attr_ids in attr_values.items():
+                clip = self.__session.get_clip(clip_id)
+                for attr_id in attr_ids:
+                    value = attr_values[clip_id][attr_id]
+                    clip.set_attr_value(attr_id, value)
+                    attr_values_list.append(
+                        (playlist.id, clip.id, attr_id, value))
+
+            self.__update_clip_nodes_in_playlist_node(playlist)
+
+            for play_order, clip_id in enumerate(playlist.clip_ids):
+                clip = self.__session.get_clip(clip_id)
+                attr_id = "play_order"
+                value = play_order + 1
                 clip.set_attr_value(attr_id, value)
                 attr_values_list.append(
                     (playlist.id, clip.id, attr_id, value))
-
-        self.__update_clip_nodes_in_playlist_node(playlist)
-
-        for play_order, clip_id in enumerate(playlist.clip_ids):
-            clip = self.__session.get_clip(clip_id)
-            attr_id = "play_order"
-            value = play_order + 1
-            clip.set_attr_value(attr_id, value)
-            attr_values_list.append(
-                (playlist.id, clip.id, attr_id, value))
+        finally:
+            commands.setCacheMode(cache_mode)
         self.SIG_ATTR_VALUES_CHANGED.emit(attr_values_list)
 
         self.SIG_PLAYLIST_MODIFIED.emit(playlist_id)
@@ -659,13 +664,6 @@ class SessionApiCore(QtCore.QObject):
         if isinstance(path, str):
             path = [path]
 
-        # Save the current cache mode and turn caching OFF during
-        # graph modification. This prevents OpenRv from trying to
-        # evaluate/cache media while we're still building the node
-        # pipeline
-        cache_mode = commands.cacheMode()
-        commands.setCacheMode(commands.CacheOff)
-
         # Create the source group of clip
         source = commands.addSourceVerbose(path)
         source_group = commands.nodeGroup(source)
@@ -730,9 +728,6 @@ class SessionApiCore(QtCore.QObject):
         commands.setFloatProperty(f"{cross_dissolve}.parameters.numFrames", [float(0)], True)
         clip.set_custom_attr("rv_cross_dissolve", cross_dissolve)
         self.__annotation_api._update_visibility(id)
-
-        # Always restore the original cache mode.
-        commands.setCacheMode(cache_mode)
 
     def __check_and_set_audio(self, source:str):
         smis = commands.sourceMediaInfoList(source)

@@ -583,32 +583,34 @@ class SessionApiCore(QtCore.QObject):
     def __delete_clips_permanently(self, clip_ids):
         if len(clip_ids) == 0:
             return
-        view_node = commands.viewNode()
-        commands.setViewNode(self.__empty_view)
-        num_of_clips_to_delete = len(clip_ids)
-        num_of_clips_deleted = 0
-        self.PRG_CLIPS_DELETION_STARTED.emit(num_of_clips_to_delete)
-        for clip_id in clip_ids:
-            clip = self.__session.get_clip(clip_id)
-            rv_cross_dissolve = clip.get_custom_attr("rv_cross_dissolve")
-            rv_secondary_transform = clip.get_custom_attr("rv_secondary_transform")
-            rv_retime = clip.get_custom_attr("rv_retime")
-            rv_ro_paint = clip.get_custom_attr("rv_ro_paint")
-            rv_ro_paint_parent = clip.get_custom_attr("rv_ro_paint_parent")
-            rv_source_group = clip.get_custom_attr("rv_source_group")
-            commands.deleteNode(rv_cross_dissolve)
-            commands.deleteNode(rv_secondary_transform)
-            commands.deleteNode(rv_retime)
-            commands.deleteNode(rv_ro_paint)
-            commands.deleteNode(rv_ro_paint_parent)
-            commands.flushCachedNode(rv_source_group, True)
-            commands.deleteNode(rv_source_group)
-            num_of_clips_deleted += 1
-            self.PRG_CLIP_DELETED.emit(
-                num_of_clips_deleted, num_of_clips_to_delete)
+        cache_mode = commands.cacheMode()
+        commands.setCacheMode(commands.CacheOff)
+        try:
+            num_of_clips_to_delete = len(clip_ids)
+            num_of_clips_deleted = 0
+            self.PRG_CLIPS_DELETION_STARTED.emit(num_of_clips_to_delete)
+            for clip_id in clip_ids:
+                clip = self.__session.get_clip(clip_id)
+                rv_cross_dissolve = clip.get_custom_attr("rv_cross_dissolve")
+                rv_secondary_transform = clip.get_custom_attr("rv_secondary_transform")
+                rv_retime = clip.get_custom_attr("rv_retime")
+                rv_ro_paint = clip.get_custom_attr("rv_ro_paint")
+                rv_ro_paint_parent = clip.get_custom_attr("rv_ro_paint_parent")
+                rv_source_group = clip.get_custom_attr("rv_source_group")
+                commands.deleteNode(rv_cross_dissolve)
+                commands.deleteNode(rv_secondary_transform)
+                commands.deleteNode(rv_retime)
+                commands.deleteNode(rv_ro_paint)
+                commands.deleteNode(rv_ro_paint_parent)
+                commands.flushCachedNode(rv_source_group, True)
+                commands.deleteNode(rv_source_group)
+                num_of_clips_deleted += 1
+                self.PRG_CLIP_DELETED.emit(
+                    num_of_clips_deleted, num_of_clips_to_delete)
+        finally:
+            commands.setCacheMode(cache_mode)
         self.SIG_CLIPS_DELETED.emit(clip_ids)
         self.PRG_CLIPS_DELETION_COMPLETED.emit()
-        commands.setViewNode(view_node)
 
     def __redraw_annotations(self):
         playlist_id = self.__session.viewport.fg

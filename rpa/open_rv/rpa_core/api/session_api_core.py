@@ -516,13 +516,19 @@ class SessionApiCore(QtCore.QObject):
                 return
         current_frame = commands.frame()
         playlist.set_active_clips(clip_ids)
-        if self.__session.viewport.bg is None:
-            self.__session.update_activated_clip_indexes()
-        else:
-            self.__session.match_fg_bg_clip_indexes()
-            self.__update_clip_nodes_in_playlist_node(
-                self.__session.get_playlist(self.__session.viewport.bg))
-        self.__update_clip_nodes_in_playlist_node(playlist)
+
+        cache_mode = commands.cacheMode()
+        commands.setCacheMode(commands.CacheOff)
+        try:
+            if self.__session.viewport.bg is None:
+                self.__session.update_activated_clip_indexes()
+            else:
+                self.__session.match_fg_bg_clip_indexes()
+                self.__update_clip_nodes_in_playlist_node(
+                    self.__session.get_playlist(self.__session.viewport.bg))
+            self.__update_clip_nodes_in_playlist_node(playlist)
+        finally:
+            commands.setCacheMode(cache_mode)
 
         if self.__timeline_api:
             self.__timeline_api._playlist_seq_modified(playlist_id)

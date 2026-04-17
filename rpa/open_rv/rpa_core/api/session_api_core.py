@@ -130,6 +130,7 @@ class SessionApiCore(QtCore.QObject):
         self.__session.delete_playlists_permanently(ids)
 
         self.__map_default_playlist_if_created()
+        self.__set_fg_pl_seq_grp_to_view_node()
         self.__set_bg_mode(self.__session.viewport.bg_mode)
 
         if fg_playlist in ids:

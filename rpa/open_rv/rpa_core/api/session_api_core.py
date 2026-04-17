@@ -621,7 +621,7 @@ class SessionApiCore(QtCore.QObject):
     def __redraw_annotations(self):
         playlist_id = self.__session.viewport.fg
         playlist = self.__session.get_playlist(playlist_id)
-        for clip_id in playlist.clip_ids:
+        for clip_id in playlist.active_clip_ids:
             clip = self.__session.get_clip(clip_id)
             self.__annotation_api._redraw_ro_annotations(clip_id)
             for frame in clip.annotations.get_rw_frames():

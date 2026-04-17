@@ -419,8 +419,6 @@ class SessionApiCore(QtCore.QObject):
         if num_of_clips_to_create == 0:
             return []
 
-        view_node = commands.viewNode()
-        commands.setViewNode(self.__empty_view)
         self.PRG_CLIPS_CREATION_STARTED.emit(num_of_clips_to_create)
 
         playlist = self.__session.get_playlist(playlist_id)
@@ -454,8 +452,6 @@ class SessionApiCore(QtCore.QObject):
             attr_values_list.append(
                 (playlist.id, clip.id, attr_id, value))
         self.SIG_ATTR_VALUES_CHANGED.emit(attr_values_list)
-
-        commands.setViewNode(view_node)
 
         self.SIG_PLAYLIST_MODIFIED.emit(playlist_id)
         # This method need to be called only after SIG_PLAYLIST_MODIFIED is emitted, so that the

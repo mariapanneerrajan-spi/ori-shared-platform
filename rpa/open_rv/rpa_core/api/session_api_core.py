@@ -861,11 +861,12 @@ class SessionApiCore(QtCore.QObject):
             if self.__is_wipe_mode():
                 self.__toggle_wipe_mode()
             self.__set_fg_pl_seq_grp_to_view_node()
+            self.__set_bg_mode_audio_input(mode)
+            return
         if self.__session.viewport.bg is None:
             return
         frame = commands.frame()
-        if mode != 0:
-            self.set_mix_mode(0)
+        self.set_mix_mode(0)
         if mode == 1:
             self.__set_bg_mode_wipe()
         elif mode == 2:

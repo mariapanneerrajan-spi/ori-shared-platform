@@ -504,8 +504,15 @@ class SessionApiCore(QtCore.QObject):
                 set_frame(self.__session.get_clip(active_clip_ids[0]))
 
     def set_active_clips(self, playlist_id, clip_ids):
-        current_frame = commands.frame()
         playlist = self.__session.get_playlist(playlist_id)
+        if playlist is None:
+            return
+        valid_clip_ids = set(playlist.clip_ids)
+        for clip_id in clip_ids:
+            if clip_id not in valid_clip_ids:
+                print(f"Warning: Clip {clip_id} does not belong to playlist {playlist_id}")
+                return
+        current_frame = commands.frame()
         playlist.set_active_clips(clip_ids)
         if self.__session.viewport.bg is None:
             self.__session.update_activated_clip_indexes()

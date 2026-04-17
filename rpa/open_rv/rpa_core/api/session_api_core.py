@@ -292,8 +292,10 @@ class SessionApiCore(QtCore.QObject):
                     while fg_i < len(fg_frames) and fg_frames[fg_i] < bg_frames[bg_i]:
                         final_bg_frames.append(bg_frames[bg_i])
                         fg_i += 1
-                    while bg_i+1 < len(bg_frames) and fg_frames[fg_i] > bg_frames[bg_i]:
+                    while bg_i+1 < len(bg_frames) and fg_i < len(fg_frames) and fg_frames[fg_i] > bg_frames[bg_i]:
                         bg_i += 1
+                    if fg_i >= len(fg_frames):
+                        break
                     final_bg_frames.append(bg_frames[bg_i])
                     fg_i = fg_i+1
                     if bg_i+1 < len(bg_frames):

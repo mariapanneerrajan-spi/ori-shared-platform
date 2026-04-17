@@ -20,18 +20,18 @@ Work through each fix one at a time: understand -> discuss -> implement -> manua
 
 ### Bug Fixes (Crash/Data-Corruption Risk)
 - [ ] **B1** — Fix IndexError in `__update_bg_retime_node` source_frame_lock path
-- [ ] **B2** — Move `SIG_ATTR_VALUES_CHANGED` emit outside loop in `clear_attr_values_at`
+- [x] **B2** — Move `SIG_ATTR_VALUES_CHANGED` emit outside loop in `clear_attr_values_at`
 - [ ] **B3** — Fix `__set_bg_mode` skipping audio cleanup when bg is None
 
 ### Correctness Bugs
-- [ ] **B4** — Remove dead code in `set_attr_values`
-- [ ] **B5** — Remove side effect from `get_current_clip` getter
+- [x] **B4** — Remove dead code in `set_attr_values`
+- [x] **B5** — Remove side effect from `get_current_clip` getter
 - [ ] **B6** — Add clip ownership validation in `set_active_clips`
 
 ### Minor Cleanups
 - [ ] **M1** — Fix `move_clips_by_offset` losing attr changes across playlists
 - [ ] **M2** — Limit `__redraw_annotations` to active clips only
-- [ ] **M3** — Remove duplicate import
+- [x] **M3** — Remove duplicate import
 
 ### Suggested Fix Order
 
@@ -43,7 +43,7 @@ Work through issues in this order. Rationale: start with zero-risk warm-ups, the
 | 2 | **B2** | Clear bug, simple one-line move, low coupling, observable fix |
 | 3 | **B4** | Dead code removal, no behavior change |
 | 4 | **B5** | Small getter fix, no downstream dependencies |
-| 5 | **B1** | Crash fix, isolated to one code path |
+| 5 | **B1** | Crash fix, isolated to one code path - Continue from here|
 | 6 | **B3** | Audio cleanup bug, moderate complexity but self-contained |
 | 7 | **B6** | Defensive validation, low risk |
 | 8 | **P1** | First perf fix — remove `setViewNode` in `create_clips`. Do before P5 since P5 changes the same method |

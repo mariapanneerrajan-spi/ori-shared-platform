@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------------------
+# CROSS-REPO TRIGGER — place this file in:
+#   AcademySoftwareFoundation/ori-shared-platform
+#   at path: .github/workflows/trigger-registry-rebuild.yml
+#
+# PURPOSE:
+#   When a PR that touches the plugins/ directory is merged to main,
+#   this workflow fires a workflow_dispatch on ori-shared-platform-website
+#   so the registry site rebuilds immediately (rather than waiting for the
+#   daily scheduled rebuild at 06:00 UTC).
+#
+# SETUP REQUIRED (one-time, by an org admin):
+#   1. Create a GitHub Fine-Grained Personal Access Token (PAT) with:
+#        - Repository access: ori-shared-platform-website
+#        - Permissions: Actions (read & write)
+#   2. Add the token as a repository secret in ori-shared-platform:
+#        Settings → Secrets and variables → Actions → New repository secret
+#        Name:  REGISTRY_REBUILD_TOKEN
+#        Value: <the PAT>
+# ---------------------------------------------------------------------------
+
+name: Trigger Registry Rebuild
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/**'   # Only trigger when the plugins/ directory changes
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch rebuild to ori-shared-platform-website
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.REGISTRY_REBUILD_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: 'AcademySoftwareFoundation',
+              repo: 'ori-shared-platform-website',
+              workflow_id: 'deploy.yml',
+              ref: 'main'
+            });
+            console.log('Rebuild triggered on ori-shared-platform-website');

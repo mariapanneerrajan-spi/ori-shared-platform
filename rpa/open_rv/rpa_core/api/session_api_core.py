@@ -1118,9 +1118,9 @@ class SessionApiCore(QtCore.QObject):
         self.PRG_SET_ATTR_VALUES_STARTED.emit(num_of_attrs_to_set)
         num_of_attrs_set = 0
         attr_values_set = []
+        playlists_needing_node_update = set()
         for attr_value in attr_values:
             playlist_id, clip_id, attr_id, value = attr_value
-            playlist = self.__session.get_playlist(playlist_id)
             clip = self.__session.get_clip(clip_id)
 
             clip_source_node = clip.get_custom_attr("rv_source_group")
@@ -1138,9 +1138,9 @@ class SessionApiCore(QtCore.QObject):
             clip.set_attr_value(attr_id, value)
             if attr_id in ("key_in", "key_out"):
                 self.__update_retime_node(clip_id)
-                self.__update_clip_nodes_in_playlist_node(playlist)
+                playlists_needing_node_update.add(playlist_id)
             if attr_id in ("dissolve_start", "dissolve_length"):
-                self.__update_clip_nodes_in_playlist_node(playlist)
+                playlists_needing_node_update.add(playlist_id)
 
             attr_values_set.append((playlist_id, clip_id, attr_id, value))
 
@@ -1159,6 +1159,11 @@ class SessionApiCore(QtCore.QObject):
             self.PRG_SET_ATTR_VALUE.emit(
                 num_of_attrs_set, num_of_attrs_to_set)
         self.PRG_SET_ATTR_VALUES_COMPLETED.emit()
+
+        for pid in playlists_needing_node_update:
+            pl = self.__session.get_playlist(pid)
+            if pl:
+                self.__update_clip_nodes_in_playlist_node(pl)
 
         self.SIG_ATTR_VALUES_CHANGED.emit(attr_values_set)
         return True

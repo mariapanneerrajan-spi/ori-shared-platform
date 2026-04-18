@@ -9,7 +9,7 @@ from rpa.open_rv.rpa_core.api import prop_util
 from rpa.open_rv.rpa_core.api.clip_attr_api_core.clip_attr_api_core \
     import ClipAttrApiCore
 
-from rpa.open_rv.rpa_core.api.utils import image_to_rv, itview_to_rv
+from rpa.open_rv.rpa_core.api.utils import image_to_rv, app_to_rv
 from rpa.utils.rv_overlays import OverlayType, RectOverlay, TextOverlay
 try:
     from pymu import MuSymbol
@@ -1451,7 +1451,7 @@ class SessionApiCore(QtCore.QObject):
             text_size = image_to_rv(width, height, media_overlay.size)
             text_red, text_green, text_blue, text_alpha = media_overlay.color
             pos_x, pos_y = media_overlay.position
-            text_pos_x, text_pos_y = itview_to_rv(width, height, pos_x, pos_y)
+            text_pos_x, text_pos_y = app_to_rv(width, height, pos_x, pos_y)
 
             prop_util.set_property(
                 f"{src_overlay_node}.{ol_type}:{overlay_id}.text", [text])
@@ -1485,7 +1485,7 @@ class SessionApiCore(QtCore.QObject):
             rect_height = (media_overlay.height / height)
             rect_red, rect_green, rect_blue, rect_alpha = media_overlay.color
             pos_x, pos_y = media_overlay.position
-            rect_pos_x, rect_pos_y = itview_to_rv(width, height, pos_x, pos_y)
+            rect_pos_x, rect_pos_y = app_to_rv(width, height, pos_x, pos_y)
 
             prop_util.set_property(
                 f"{src_overlay_node}.{ol_type}:{overlay_id}.width", [rect_width])

@@ -58,7 +58,7 @@ class ColorCorrectionAndGrading(QtWidgets.QScrollArea):
         self.__create_region_btn = QtWidgets.QPushButton("Add Region")
 
         layout = QtWidgets.QHBoxLayout()
-        # TODO: hide these buttons due to incompatibility with itview4 and sync server
+        # TODO: hide these buttons due to incompatibility with rpa_app4 and sync server
         # layout.addWidget(self.__create_colortimer_btn)
         # layout.addWidget(self.__create_grade_btn)
         # layout.addWidget(self.__create_region_btn)
@@ -280,7 +280,7 @@ class Header(QtWidgets.QWidget):
         h_layout.addWidget(strip_1, 5)
         h_layout.addWidget(self.__mute_button, 0)
         h_layout.addWidget(self.__reset_button, 0)
-        # TODO: hide these buttons due to incompatibility with itview4 and sync server
+        # TODO: hide these buttons due to incompatibility with rpa_app4 and sync server
         #h_layout.addWidget(self.__delete_button, 0)
         h_layout.addWidget(strip_2, 5)
         h_layout.addWidget(self.__title_label, 0)
@@ -337,7 +337,7 @@ class Region(QtWidgets.QWidget):
         mini_label_button.SetCompactWidgetWidth(title_label)
 
         title_layout = QtWidgets.QHBoxLayout()
-        # TODO: hide these buttons due to incompatibility with itview4 and sync server
+        # TODO: hide these buttons due to incompatibility with rpa_app4 and sync server
         # title_layout.addWidget(strip_1, 5)
         # title_layout.addWidget(self.__delete_button, 0)
         title_layout.addWidget(strip_2, 5)

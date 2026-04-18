@@ -5,4 +5,4 @@ APPEND = "append"
 REPLACE = "replace"
 SAVE = "save"
 
-ITVIEW_METADATA_KEY = "itview"
+APP_METADATA_KEY = "rpa_app"

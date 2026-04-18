@@ -948,8 +948,8 @@ class TimelineSlider(QtWidgets.QWidget):
             else:
                 tick_area = self.__get_tick_area(frame)
 
-            # NOTE: in itview 4, keys were drawn using rec frame, which started from 0
-            # visually, we never show that, so in itview 5, the default start is 1
+            # NOTE: in rpa_app 4, keys were drawn using rec frame, which started from 0
+            # visually, we never show that, so in rpa_app 5, the default start is 1
             # In order to make sure keys are drawn correctly, we do subtraction here, but
             # ideally, larger change should be done to all methods so it includes that change
 

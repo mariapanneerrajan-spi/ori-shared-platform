@@ -114,16 +114,16 @@ def get_global_frame(source_node, src_frame):
         return
     return convert_to_global_frame(src_frame, source_node)
 
-# convert value from itview to rv value
-def convert_translate_itview_to_rv(value:float, h:int)->float:
-    """Function that helps convert Itview translate value to RV translate value.
+# convert value from rpa_app to rv value
+def convert_translate_app_to_rv(value:float, h:int)->float:
+    """Function that helps convert App translate value to RV translate value.
        h is the height of the image in which translation is applied.
     """
     return (value / h)
 
-# convert value from rv to itview value
-def convert_translate_rv_to_itview(value:float, h:int)->float:
-    """Function that helps convert RV translate value to Itview translate value.
+# convert value from rv to rpa_app value
+def convert_translate_rv_to_rpa_app(value:float, h:int)->float:
+    """Function that helps convert RV translate value to App translate value.
        h is the height of the image in which translation is applied.
     """
     return float(round(value * h))

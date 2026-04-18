@@ -48,7 +48,7 @@ class OTIOReader(object):
                 playlist_name = track.name if track.name else ""
                 playlist_id = self.__session_api.create_playlists([playlist_name])[0]
 
-                playlist_metadata = track.metadata.get(C.ITVIEW_METADATA_KEY)
+                playlist_metadata = track.metadata.get(C.APP_METADATA_KEY)
                 is_fg = playlist_metadata.get("foreground", None)
                 is_bg = playlist_metadata.get("background", None)
                 if is_fg:
@@ -68,7 +68,7 @@ class OTIOReader(object):
                     clip_id = uuid.uuid4().hex
                     clip_ids.append(clip_id)
                     clip_paths.append(clip_media)
-                    clip_attr_values = clip.metadata[C.ITVIEW_METADATA_KEY]
+                    clip_attr_values = clip.metadata[C.APP_METADATA_KEY]
                     if clip.color:
                         clip_colors[clip_id] = clip.color.to_rgba_float_list()
 

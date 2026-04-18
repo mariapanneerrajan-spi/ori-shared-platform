@@ -14,7 +14,7 @@ from rpa.session_state.annotations import Stroke, Text, Annotation
 
 
 TIMELINE_SELECTED_KEYS = "selected_timeline_keys"
-MIME_TYPE_ANNOTATION_LIST = 'itview/annotations'
+MIME_TYPE_ANNOTATION_LIST = 'rpa_app/annotations'
 
 
 class TimelineController(QtWidgets.QToolBar):

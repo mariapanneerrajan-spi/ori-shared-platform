@@ -1,7 +1,0 @@
-{
-    "class_name": "AnimEdit",
-    "itview_version": "1.0.0",
-    "author_email": "itview-dev@imageworks.com",
-    "plugin_name": "AnimEdit",
-    "description": "Provides frame editing options to hold or drop frames per clip"
-}

@@ -312,7 +312,6 @@ def cmd_install_deps(rv_home):
 
     req_files = [
         ROOT_DIR / "rpa" / "build_scripts" / "requirements.txt",
-        ROOT_DIR / "itview" / "requirements.txt",
     ]
 
     print("Installing Python dependencies into OpenRV Python...")

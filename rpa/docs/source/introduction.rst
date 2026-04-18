@@ -39,10 +39,10 @@ Whenever a RPA widget using the RPA API creates playlists or clips, or adds anno
 
 
 ===================================================================
-RPA is powered by Academy Sci-Tech Award-winning Itview's concepts!
+RPA is powered by Academy Sci-Tech Award-winning App's concepts!
 ===================================================================
 
-By using RPA, pipeline developers can instantly tap into a world-class review session which has been built on top of the core-concepts of **Sony Pictures Imageworks' Academy SciTech Award-winning playback system, Itview**.
+By using RPA, pipeline developers can instantly tap into a world-class review session which has been built on top of the core-concepts of **Sony Pictures Imageworks' Academy SciTech Award-winning playback system, App**.
 With RPA, setting up a review session is simple:
 You start with a new Session,
 

@@ -13,9 +13,9 @@ from rv import runtime
 
 from rpa.session_state.annotations import \
     Stroke, StrokeMode, StrokeBrush, Text
-from rpa.session_state.utils import Color, Point, itview_to_screen, image_to_itview
+from rpa.session_state.utils import Color, Point, app_to_screen, image_to_rpa_app
 from rpa.open_rv.rpa_core.api.utils import \
-    rv_to_image, rv_to_itview, image_to_rv, itview_to_rv
+    rv_to_image, rv_to_rpa_app, image_to_rv, app_to_rv
 from rpa.open_rv.rpa_core.api import prop_util
 
 LASER_POINT_DELAY = 1.0
@@ -82,7 +82,7 @@ class AnnotationApiCore(QtCore.QObject):
         new_color = stroke_point.color.__getstate__()
         new_brush = stroke_point.brush
         new_mode = stroke_point.mode
-        new_point = itview_to_rv(width, height, *(stroke_point.point.__getstate__()))
+        new_point = app_to_rv(width, height, *(stroke_point.point.__getstate__()))
 
         name = self.__get_last_transient_stroke_name(paint_node, frame, token)
         if name is None:
@@ -432,9 +432,9 @@ class AnnotationApiCore(QtCore.QObject):
         name = stroke.get_custom_attr("rv_pen")
         points = []
         if stroke.cont and prev_stroke is not None and prev_stroke.points:
-            points.append(itview_to_rv(
+            points.append(app_to_rv(
                 width, height, *prev_stroke.points[-1].__getstate__()))
-        points.extend([itview_to_rv(width, height, *point.__getstate__())
+        points.extend([app_to_rv(width, height, *point.__getstate__())
             for point in stroke.points])
         prop_util.set_property(
                 f"{paint_node}.{name}.width",
@@ -466,7 +466,7 @@ class AnnotationApiCore(QtCore.QObject):
             [text.color.__getstate__()])
         prop_util.set_property(
             f"{paint_node}.{name}.position",
-            [itview_to_rv(
+            [app_to_rv(
                 width, height,
                 *text.position.__getstate__())])
         prop_util.set_property(
@@ -636,10 +636,10 @@ class AnnotationApiCore(QtCore.QObject):
         GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
 
         stroke_point = self.__pen_stroke_point
-        radius = itview_to_screen(geometry, image_to_itview(width, height, stroke_point.width))
+        radius = app_to_screen(geometry, image_to_rpa_app(width, height, stroke_point.width))
         slices = 64
         incr = 2 * math.pi / slices
-        x, y = itview_to_screen(geometry, *stroke_point.point.__getstate__())
+        x, y = app_to_screen(geometry, *stroke_point.point.__getstate__())
         r, g, b, a = stroke_point.color.__getstate__()
         is_eraser = stroke_point.mode == StrokeMode.ERASER
 
@@ -716,7 +716,7 @@ class AnnotationApiCore(QtCore.QObject):
             brush=StrokeBrush(prop_util.get_property(f"{paint_node}.{name}.brush")[0]),
             width=rv_to_image(width, height, prop_util.get_property(f"{paint_node}.{name}.width")[0]),
             color=Color(*prop_util.get_property(f"{paint_node}.{name}.color")[0]),
-            points=[Point(*rv_to_itview(width, height, *point)) for point in prop_util.get_property(f"{paint_node}.{name}.points")]
+            points=[Point(*rv_to_rpa_app(width, height, *point)) for point in prop_util.get_property(f"{paint_node}.{name}.points")]
         )
 
     def get_annotation_ghosting(self):

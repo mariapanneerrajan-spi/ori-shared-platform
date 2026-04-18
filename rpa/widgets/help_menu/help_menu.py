@@ -6,7 +6,7 @@ class HelpMenu(QtWidgets.QMenu):
     def __init__(self, rpa, main_window):
         super().__init__("Help", main_window)
         self.__main_window = main_window
-        # self.__rpa_version = os.getenv("SPK_OPT_itview5.rpa", "Unable to detect version")
+        # self.__rpa_version = os.getenv("SPK_OPT_rpa_app.rpa", "Unable to detect version")
         self.__rpa_version = "1.0"
         self.__about_dialog = AboutDialog("RPA",
                                           rpa_version=self.__rpa_version,

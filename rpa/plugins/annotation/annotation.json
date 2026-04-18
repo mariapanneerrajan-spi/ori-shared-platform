@@ -1,0 +1,7 @@
+{
+    "class_name": "Annotation",
+    "app_version": "1.0.0",
+    "author_email": "rpa-app-dev@imageworks.com",
+    "plugin_name": "Annotation",
+    "description": "Provides tools for drawing annotations on media"
+}

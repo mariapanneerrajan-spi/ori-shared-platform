@@ -17,7 +17,7 @@ from rpa.session_state.annotations import Annotation as RpaAnnotation
 from rpa.session_state.annotations import \
     Text, StrokeMode, StrokeBrush, StrokePoint, Stroke
 from rpa.session_state.utils import \
-    Color, Point, screen_to_itview, itview_to_screen
+    Color, Point, screen_to_rpa_app, app_to_screen
 from functools import partial
 from enum import Enum, auto
 
@@ -301,7 +301,7 @@ class Annotation(QtCore.QObject):
         if interactive_mode in (
             C.INTERACTIVE_MODE_HARD_ERASER, C.INTERACTIVE_MODE_SOFT_ERASER):
             width = self.__eraser_width
-        point = Point(*screen_to_itview(self.__geometry, x, y))
+        point = Point(*screen_to_rpa_app(self.__geometry, x, y))
         self.__last_point = point if interactive_mode == C.INTERACTIVE_MODE_MULTI_LINE else None
         is_line = interactive_mode in (C.INTERACTIVE_MODE_LINE, C.INTERACTIVE_MODE_MULTI_LINE)
 
@@ -325,7 +325,7 @@ class Annotation(QtCore.QObject):
         pen_width = self.__pen_width * width
         color = Color().__setstate__(self.__color.__getstate__())
         color.a *= opacity
-        point = Point(*screen_to_itview(self.__geometry, x, y))
+        point = Point(*screen_to_rpa_app(self.__geometry, x, y))
 
         stroke_point = StrokePoint(
             mode=mode,
@@ -347,9 +347,9 @@ class Annotation(QtCore.QObject):
         snew = Point(*new)
         sdx, sdy = snew.x - sold.x, snew.y - sold.y
 
-        # points in itview coordinates
-        iold = Point(*screen_to_itview(self.__geometry, *old))
-        inew = Point(*screen_to_itview(self.__geometry, *new))
+        # points in rpa_app coordinates
+        iold = Point(*screen_to_rpa_app(self.__geometry, *old))
+        inew = Point(*screen_to_rpa_app(self.__geometry, *new))
         idx, idy = inew.x - iold.x, inew.y - iold.y
 
         new_annotation = self.__mouse_down.annotation.copy()
@@ -375,11 +375,11 @@ class Annotation(QtCore.QObject):
             for annotation in new_annotation.annotations:
                 if isinstance(annotation, Stroke):
                     for point in annotation.points:
-                        x, y = itview_to_screen(self.__geometry, point.x, point.y)
+                        x, y = app_to_screen(self.__geometry, point.x, point.y)
                         x -= sold.x; y -= sold.y
                         x, y = (x * cos) - (y * sin), (x * sin) + (y * cos)
                         x += sold.x; y += sold.y
-                        point.x, point.y = screen_to_itview(self.__geometry, x, y)
+                        point.x, point.y = screen_to_rpa_app(self.__geometry, x, y)
         self.__annotation_api.set_rw_annotations(
             {self.__mouse_down.cguid: {self.__mouse_down.source_frame: new_annotation}})
 
@@ -437,7 +437,7 @@ class Annotation(QtCore.QObject):
                 if effective_mode in \
                     (C.INTERACTIVE_MODE_HARD_ERASER, C.INTERACTIVE_MODE_SOFT_ERASER):
                     width = self.__eraser_width
-                point = Point(*screen_to_itview(self.__geometry, *get_pos()))
+                point = Point(*screen_to_rpa_app(self.__geometry, *get_pos()))
                 stroke_point = StrokePoint(
                     mode=mode,
                     brush=brush,
@@ -473,7 +473,7 @@ class Annotation(QtCore.QObject):
         if interactive_mode == C.INTERACTIVE_MODE_TEXT and \
             event.type() == QtCore.QEvent.MouseButtonRelease:
                 self.__text_position = Point(
-                    *screen_to_itview(self.__geometry, *get_pos()))
+                    *screen_to_rpa_app(self.__geometry, *get_pos()))
                 self.__viewport_api.set_text_cursor(
                     self.__text_position, self.__text_size)
                 self.show_text_line_edit(True)
@@ -497,7 +497,7 @@ class Annotation(QtCore.QObject):
                             self.__mouse_down.annotation = RpaAnnotation().__setstate__(annotation.__getstate__())
                             self.__mouse_down.location = get_pos()
                             self.__viewport_api.set_cross_hair_cursor(
-                                Point(*screen_to_itview(self.__geometry, *get_pos())))
+                                Point(*screen_to_rpa_app(self.__geometry, *get_pos())))
                             if event.button() == QtCore.Qt.LeftButton:
                                 self.__mouse_down.transform = Strokes.TRANSLATE
                             elif event.button() == QtCore.Qt.MiddleButton:
@@ -505,7 +505,7 @@ class Annotation(QtCore.QObject):
                             elif event.button() == QtCore.Qt.RightButton:
                                 self.__mouse_down.transform = Strokes.SCALE
                     if interactive_mode == C.INTERACTIVE_MODE_MULTI_LINE and self.__last_point:
-                        x, y = itview_to_screen(self.__geometry, *self.__last_point.__getstate__())
+                        x, y = app_to_screen(self.__geometry, *self.__last_point.__getstate__())
                         self.__append_mouse_point(x, y)
                     self.__append_mouse_point(*get_pos())
 

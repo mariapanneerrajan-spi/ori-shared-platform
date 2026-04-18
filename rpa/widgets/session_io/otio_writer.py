@@ -52,7 +52,7 @@ class OTIOWriter(object):
             name=playlist_name,
             kind=otio.schema.TrackKind.Video
         )
-        track.metadata[C.ITVIEW_METADATA_KEY] = playlist_metadata
+        track.metadata[C.APP_METADATA_KEY] = playlist_metadata
 
         return track
 
@@ -90,7 +90,7 @@ class OTIOWriter(object):
             source_range=source_range,
             color=clip_color
         )
-        clip.metadata[C.ITVIEW_METADATA_KEY] = clip_metadata
+        clip.metadata[C.APP_METADATA_KEY] = clip_metadata
 
         return clip
 

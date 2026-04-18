@@ -8,6 +8,7 @@ setup(
     author="Sony Pictures Imageworks",
     packages=find_packages(),
     include_package_data=True,
+    package_data={"": ["*.json"]},
     install_requires=[],  # Add dependencies if needed
     python_requires=">=3.6",
 )

@@ -7,7 +7,7 @@ try:
 except:
     from PySide6 import QtCore, QtWidgets
 
-from rpa.session_state.utils import screen_to_itview
+from rpa.session_state.utils import screen_to_rpa_app
 from rpa.session_state.color_corrections import ColorTimer, Grade
 
 from rpa.widgets.color_corrector.view.view import View
@@ -176,13 +176,13 @@ class Controller(QtCore.QObject):
         """
         Draws a new shape in the view given (x,y) points.
         """
-        # TODO: do not allow shapes for clip CCs due to incompatibility with itview4 and sync server
+        # TODO: do not allow shapes for clip CCs due to incompatibility with rpa_app4 and sync server
         if self.current_tab == self.tab_widget.clip_tab:
             return
         geometry = self.__viewport_api.get_current_clip_geometry()
         if geometry is None:
             return
-        point = screen_to_itview(geometry, x, y)
+        point = screen_to_rpa_app(geometry, x, y)
         self.__points = [point, point]
         if self.__interactive_mode == C.INTERACTIVE_MODE_LASSO:
             self.__transient_points.append(point)
@@ -193,14 +193,14 @@ class Controller(QtCore.QObject):
         """
         Continues to append (x,y) points to the existing region shape.
         """
-        # TODO: do not allow shapes for clip CCs due to incompatibility with itview4 and sync server
+        # TODO: do not allow shapes for clip CCs due to incompatibility with rpa_app4 and sync server
         if self.current_tab == self.tab_widget.clip_tab:
             return
         geometry = self.__viewport_api.get_current_clip_geometry()
         if geometry is None:
             return
         cc_id = self.current_tab.id
-        point = screen_to_itview(geometry, x, y)
+        point = screen_to_rpa_app(geometry, x, y)
         self.__points[-1] = point
         if self.__interactive_mode == C.INTERACTIVE_MODE_RECTANGLE:
             points = self.__plot_rectangle()
@@ -216,7 +216,7 @@ class Controller(QtCore.QObject):
         """
         Finish shape drawing and plot points according to shape selection.
         """
-        # TODO: do not allow shapes for clip CCs due to incompatibility with itview4 and sync server
+        # TODO: do not allow shapes for clip CCs due to incompatibility with rpa_app4 and sync server
         if self.current_tab == self.tab_widget.clip_tab:
             return
         geometry = self.__viewport_api.get_current_clip_geometry()
@@ -225,7 +225,7 @@ class Controller(QtCore.QObject):
         cc_id = self.current_tab.id
         if not self.__cc_api.has_region(self.current_clip, cc_id):
             self.__create_region(cc_id)
-        point = screen_to_itview(geometry, x, y)
+        point = screen_to_rpa_app(geometry, x, y)
         self.__points[-1] = point
         if self.__interactive_mode == C.INTERACTIVE_MODE_RECTANGLE:
             points = self.__plot_rectangle()

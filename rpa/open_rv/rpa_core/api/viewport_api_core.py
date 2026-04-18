@@ -15,7 +15,7 @@ from rv import commands as rvc
 from rv import extra_commands as rve
 from rv import runtime
 from rpa.open_rv.rpa_core.api import prop_util
-from rpa.session_state.utils import Point, itview_to_screen
+from rpa.session_state.utils import Point, app_to_screen
 try:
     from playwright.async_api import async_playwright
 except ImportError:
@@ -540,7 +540,7 @@ class ViewportApiCore(QtCore.QObject):
         source_node = f"{source_node}_source"
         geometry = rvc.imageGeometry(source_node)
         position = Point(
-            *itview_to_screen(geometry, position.x, position.y))
+            *app_to_screen(geometry, position.x, position.y))
         is_success = self.__session.viewport.set_text_cursor(position, size)
         rvc.redraw()
         return is_success
@@ -564,7 +564,7 @@ class ViewportApiCore(QtCore.QObject):
         geometry = rvc.imageGeometry(source_node)
         if position:
             position = Point(
-                *itview_to_screen(geometry, position.x, position.y))
+                *app_to_screen(geometry, position.x, position.y))
         self.__session.viewport.set_cross_hair_cursor(position)
         rvc.redraw()
         return True
@@ -1177,13 +1177,13 @@ class ViewportApiCore(QtCore.QObject):
                 f"{secondary_transform}.transform.rotate", [float(rotation)])
 
         if translate_x is not None and translate_x != "":
-            translate_x = prop_util.convert_translate_itview_to_rv(translate_x, h)
+            translate_x = prop_util.convert_translate_app_to_rv(translate_x, h)
             t_y = rvc.getFloatProperty(f"{secondary_transform}.transform.translate")[1]
             rvc.setFloatProperty(
                 f"{secondary_transform}.transform.translate", [float(translate_x), t_y])
 
         if translate_y is not None and translate_y != "":
-            translate_y = prop_util.convert_translate_itview_to_rv(translate_y, h)
+            translate_y = prop_util.convert_translate_app_to_rv(translate_y, h)
             t_x = rvc.getFloatProperty(f"{secondary_transform}.transform.translate")[0]
             rvc.setFloatProperty(
                 f"{secondary_transform}.transform.translate", [t_x, float(translate_y)])

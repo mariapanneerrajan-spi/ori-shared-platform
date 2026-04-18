@@ -1,0 +1,10 @@
+command: /spfs/bin/rpa_app
+entrypoint: ''
+kind: SPK
+allow_prerelease: true
+
+overlay_tags:
+  - spawn/overlays/rpa_app_plugins/spi/rpa_app_dev
+
+packages:
+  - rpa_app/0.8.2

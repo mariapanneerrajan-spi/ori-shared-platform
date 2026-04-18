@@ -13,35 +13,35 @@ import platform
 import logging
 from logging.handlers import RotatingFileHandler
 from rpa.rpa import Rpa
-from itview.skin.plugin_manager.controller import Controller as PluginManager
-from itview import plugin_path_configs
-from itview.skin.dbid_mapper import DbidMapper
-from itview.core.viewport_user_input_rx import ViewportUserInputRx
-from itview.core.viewport_binding_filter import ViewportBindingFilter
+from rpa.app.skin.plugin_manager.controller import Controller as PluginManager
+from rpa.app import plugin_path_configs
+from rpa.app.skin.dbid_mapper import DbidMapper
+from rpa.app.core.viewport_user_input_rx import ViewportUserInputRx
+from rpa.app.core.viewport_binding_filter import ViewportBindingFilter
 from rpa.utils import default_connection_maker
-from itview.skin.itview_main_window import ItviewMainWindow
-from itview.skin.itview_stylesheet import apply_itview_styling
+from rpa.app.skin.app_main_window import AppMainWindow
+from rpa.app.skin.app_stylesheet import apply_app_styling
 
 
 def create_config(parent=None):
-    config = QtCore.QSettings("imageworks.com", "itview", parent)
-    config.beginGroup("itview")
+    config = QtCore.QSettings("imageworks.com", "rpa_app", parent)
+    config.beginGroup("rpa_app")
     return config
 
 
 def create_logger():
     if platform.system() == 'Windows':
-        log_dir = os.path.join(os.environ["APPDATA"], "itview")
+        log_dir = os.path.join(os.environ["APPDATA"], "rpa_app")
     elif platform.system() == 'Linux' or platform.system() == 'Darwin':
-        log_dir = os.path.join(os.environ["HOME"], ".itview")
+        log_dir = os.path.join(os.environ["HOME"], ".rpa_app")
     else:
         raise Exception("Unsupported platform!")
 
     if not os.path.exists(log_dir):
         os.mkdir(log_dir)
-    log_filepath = os.path.join(log_dir, "itview.log")
+    log_filepath = os.path.join(log_dir, "rpa_app.log")
 
-    logger = logging.getLogger("itview")
+    logger = logging.getLogger("rpa_app")
     logger.setLevel(logging.DEBUG)
     if not logger.handlers:
         handler = RotatingFileHandler(
@@ -53,7 +53,7 @@ def create_logger():
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.propagate = False
-    logger.info("[Itview] Itview Logger Created")
+    logger.info("[App] App Logger Created")
     return logger
 
 
@@ -89,43 +89,43 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
         # Hide OpenRV's main window but keep it ALIVE. GLView holds a raw C++
         # pointer (m_doc) to RvDocument; deleting RvDocument would dangle that
         # pointer and crash on the next render. Hiding is enough to keep all
-        # of OpenRV's stock UI (menus, toolbars, hotkeys) out of Itview.
+        # of OpenRV's stock UI (menus, toolbars, hotkeys) out of App.
         self.__rv_main_window.hide()
 
-        # Shared QSettings + logger for both Itview and RPA. Created here
-        # (before ItviewMainWindow) so the main window can receive them at
+        # Shared QSettings + logger for both App and RPA. Created here
+        # (before AppMainWindow) so the main window can receive them at
         # construction time and use the settings to persist its layout.
         # The same instances are reused when constructing Rpa(...) in
-        # __setup_rpa_mode, so Itview and RPA write to one on-disk file
+        # __setup_rpa_mode, so App and RPA write to one on-disk file
         # and log to one logger.
         self.__config = create_config(self)
         self.__logger = create_logger()
 
-        # Build the Itview main window — re-parents the viewport internally
+        # Build the App main window — re-parents the viewport internally
         # and provides the menu bar / accessor methods plugins expect.
-        self.__main_window = ItviewMainWindow(
+        self.__main_window = AppMainWindow(
             self._viewport_widget,
             settings=self.__config,
             logger=self.__logger,
         )
 
-        # Itview is deliberately agnostic to OpenRV, so it doesn't know how
+        # App is deliberately agnostic to OpenRV, so it doesn't know how
         # to shut the underlying review system down. That's our job as the
-        # RV-specific glue: when Itview closes, close the hidden RvDocument
+        # RV-specific glue: when App closes, close the hidden RvDocument
         # so OpenRV's normal shutdown path runs (before-session-deletion
         # handler in RvDocument::closeEvent) and Qt's quitOnLastWindowClosed
         # takes the app down.
-        self.__main_window.SIG_CLOSED.connect(self.__on_itview_closed)
+        self.__main_window.SIG_CLOSED.connect(self.__on_rpa_app_closed)
 
         self.__setup_rpa_mode()
 
         self.__main_window.show()
         print("RPA Widgets Mode initialized")
 
-    def __on_itview_closed(self):
-        """Close the hidden RvDocument when Itview closes.
+    def __on_rpa_app_closed(self):
+        """Close the hidden RvDocument when App closes.
 
-        Invoked via ItviewMainWindow.SIG_CLOSED. Closing RvDocument runs
+        Invoked via AppMainWindow.SIG_CLOSED. Closing RvDocument runs
         OpenRV's before-session-deletion handler and, since it was the
         only other top-level window, lets Qt quit the application.
         """
@@ -135,14 +135,14 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
     def __setup_rpa_mode(self):
         # Window chrome (menus, dark title bar, viewport re-parenting,
         # toggle_fullscreen, get_*_menu accessors) is handled by
-        # ItviewMainWindow itself. This method only wires up the RPA core,
+        # AppMainWindow itself. This method only wires up the RPA core,
         # plugin manager, and viewport input.
         app = QtWidgets.QApplication.instance()
-        apply_itview_styling(app)
+        apply_app_styling(app)
         self.__rpa_core = app.rpa_core
 
         # Reuse the shared settings and logger created in
-        # __rv_session_initialized so Itview and RPA share one on-disk
+        # __rv_session_initialized so App and RPA share one on-disk
         # file and one logger.
         plugin_manager = PluginManager(
             self.__main_window, plugin_path_configs.get(), self.__logger)
@@ -158,7 +158,7 @@ class RpaWidgetsMode(QtCore.QObject, rvtypes.MinorMode):
         # Install the binding filter on the viewport BEFORE plugins load their
         # own event filters.  Qt calls filters in reverse installation order
         # (last installed = first called), so plugin filters — installed later
-        # during itview_init — run before ours.  Plugins process the event and
+        # during app_init — run before ours.  Plugins process the event and
         # return False; our filter then consumes it, preventing GLView::event()
         # from translating it into a Mu event (hotkey, popup menu, etc.).
         self.__viewport_binding_filter = ViewportBindingFilter()

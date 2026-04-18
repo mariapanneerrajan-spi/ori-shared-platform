@@ -1,0 +1,7 @@
+{
+    "class_name": "AppSessionAssistant",
+    "app_version": "1.0.0",
+    "author_email": "rpa-app-dev@imageworks.com",
+    "plugin_name": "App Session Assistant",
+    "description": "Provides session controls"
+}

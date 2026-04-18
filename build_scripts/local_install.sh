@@ -10,9 +10,9 @@ rm -rf $RV_SUPPORT_PATH
 mkdir -p $RV_SUPPORT_PATH/Packages/
 $RPA_DIR/build_scripts_spi/_install_rpa_core_pkg.sh
 
-# ITVIEW install
-export ITVIEW_RV_SUPPORT_PATH=$ROOT_DIR/local_install/lib/itview
-export RV_SUPPORT_PATH=$RV_SUPPORT_PATH:$ITVIEW_RV_SUPPORT_PATH
-rm -rf $ITVIEW_RV_SUPPORT_PATH
-mkdir -p $ITVIEW_RV_SUPPORT_PATH/Packages/
-$ROOT_DIR/itview/core/open_rv/install.sh
+# App install
+export APP_RV_SUPPORT_PATH=$ROOT_DIR/local_install/lib/rpa_app
+export RV_SUPPORT_PATH=$RV_SUPPORT_PATH:$APP_RV_SUPPORT_PATH
+rm -rf $APP_RV_SUPPORT_PATH
+mkdir -p $APP_RV_SUPPORT_PATH/Packages/
+$ROOT_DIR/rpa/app/core/open_rv/install.sh

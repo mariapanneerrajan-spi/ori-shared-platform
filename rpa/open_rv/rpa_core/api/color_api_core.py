@@ -7,9 +7,9 @@ try:
     from PySide2 import QtCore
 except:
     from PySide6 import QtCore
-from rpa.open_rv.rpa_core.api.utils import itview_to_rv
+from rpa.open_rv.rpa_core.api.utils import app_to_rv
 from rpa.session_state.color_corrections import ColorTimer, Grade
-from rpa.session_state.utils import itview_to_screen
+from rpa.session_state.utils import app_to_screen
 import struct
 import platform
 
@@ -827,7 +827,7 @@ class ColorApiCore(QtCore.QObject):
 
                 for shape in cc.region.shapes:
                     points = [point.__getstate__() for point in shape.points]
-                    points = [itview_to_rv(width, height, *point) for point in points]
+                    points = [app_to_rv(width, height, *point) for point in points]
                     if not points:
                         continue
 
@@ -836,10 +836,10 @@ class ColorApiCore(QtCore.QObject):
 
                 if not cc.region.shapes:
                     points = [
-                        itview_to_rv(width, height, -10.0, -10.0),
-                        itview_to_rv(width, height, +10.0, -10.0),
-                        itview_to_rv(width, height, +10.0, +10.0),
-                        itview_to_rv(width, height, -10.0, +10.0)]
+                        app_to_rv(width, height, -10.0, -10.0),
+                        app_to_rv(width, height, +10.0, -10.0),
+                        app_to_rv(width, height, +10.0, +10.0),
+                        app_to_rv(width, height, -10.0, +10.0)]
                     self.__render_polygon_with_stencil_test(width, height, points)
 
                 # apply blur
@@ -923,7 +923,7 @@ class ColorApiCore(QtCore.QObject):
 
                     GL.glBegin(GL.GL_LINE_STRIP)
                     for point in points:
-                        GL.glVertex2f(*itview_to_screen(geometry, *point))
+                        GL.glVertex2f(*app_to_screen(geometry, *point))
                     GL.glEnd()
 
                 if cc_modified(cc):
@@ -936,7 +936,7 @@ class ColorApiCore(QtCore.QObject):
 
                     GL.glBegin(GL.GL_LINE_LOOP)
                     for point in points:
-                        GL.glVertex2f(*itview_to_screen(geometry, *point))
+                        GL.glVertex2f(*app_to_screen(geometry, *point))
                     GL.glEnd()
 
         GL.glDisable(GL.GL_BLEND)

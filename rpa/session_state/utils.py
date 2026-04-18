@@ -29,23 +29,23 @@ class Point:
         return self
 
 
-def image_to_itview(width, height, x, y=None):
+def image_to_rpa_app(width, height, x, y=None):
     if y is None:
-        a = image_to_itview(width, height, 0, 0)
-        b = image_to_itview(width, height, x, 0)
+        a = image_to_rpa_app(width, height, 0, 0)
+        b = image_to_rpa_app(width, height, x, 0)
         return b[0] - a[0]
     return x / width, y / height
 
 
-def itview_to_image(width, height, x, y=None):
+def app_to_image(width, height, x, y=None):
     if y is None:
-        a = itview_to_image(width, height, 0, 0)
-        b = itview_to_image(width, height, x, 0)
+        a = app_to_image(width, height, 0, 0)
+        b = app_to_image(width, height, x, 0)
         return b[0] - a[0]
     return x * width, y * height
 
 
-def screen_to_itview(geometry, x, y):
+def screen_to_rpa_app(geometry, x, y):
     t = geometry[0]
     u = [geometry[1][0] - t[0], geometry[1][1] - t[1]]
     v = [geometry[3][0] - t[0], geometry[3][1] - t[1]]
@@ -54,10 +54,10 @@ def screen_to_itview(geometry, x, y):
     return k * (v[1] * d[0] - v[0] * d[1]), k * (u[0] * d[1] - u[1] * d[0])
 
 
-def itview_to_screen(geometry, x, y=None):
+def app_to_screen(geometry, x, y=None):
     if y is None:
-        a = itview_to_screen(geometry, 0, 0)
-        b = itview_to_screen(geometry, x, 0)
+        a = app_to_screen(geometry, 0, 0)
+        b = app_to_screen(geometry, x, 0)
         return ((b[0] - a[0]) ** 2.0 + (b[1] - a[1]) ** 2.0) ** 0.5
     t = geometry[0]
     u = [geometry[1][0] - t[0], geometry[1][1] - t[1]]

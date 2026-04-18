@@ -22,7 +22,7 @@ PEN_WIDTH = "pen_width"
 ERASER_WIDTH = "eraser_width"
 
 TIMELINE_SELECTED_KEYS = "selected_timeline_keys"
-MIME_TYPE_ANNOTATION_LIST = 'itview/annotations'
+MIME_TYPE_ANNOTATION_LIST = 'rpa_app/annotations'
 
 ANNOTATION_COLORS = [(1.0, 1.0, 1.0),   # white
                     (1.0, 0.0, 0.0),   # red

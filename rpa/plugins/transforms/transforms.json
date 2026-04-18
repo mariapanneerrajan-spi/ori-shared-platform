@@ -1,0 +1,7 @@
+{
+    "class_name": "Transforms",
+    "app_version": "1.0.0",
+    "author_email": "rpa-app-dev@imageworks.com",
+    "plugin_name": "Transforms",
+    "description": "Manages transforms"
+}

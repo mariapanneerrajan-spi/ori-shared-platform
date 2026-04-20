@@ -57,8 +57,9 @@ Import as ``rpa_widgets.<package>.<module>``:
 Test harnesses
 --------------
 
-Manual-test widgets for RPA APIs live at **./test_widgets/** (outside the
-plugin tree).
+Manual-test widgets for RPA APIs live at
+**./plugins/rpa_widgets/test_widgets/** alongside the other shared widgets.
+They are not loaded as plugins.
 
 =============================
 How to create an RPA widget ?

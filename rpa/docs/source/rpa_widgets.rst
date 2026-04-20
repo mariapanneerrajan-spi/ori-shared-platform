@@ -9,68 +9,80 @@ RPA Widgets
 Where are the RPA widgets?
 ==========================
 
-RPA Widgets
------------
+There is no longer a separate ``rpa/widgets/`` tree. UI code now lives with the
+plugin that owns it:
 
-You can find all the RPA widgets in the root level of,
-**./widgets/**
+Per-plugin widgets
+------------------
 
-Sub Widgets
------------
+Each plugin's UI lives under its own plugin folder as ``widget/``:
 
-The sub-widgets that are used by more than 1 RPA widgets are here,
-**./widgets/sub_widgets/**
+**./plugins/<plugin_name>/widget/**
 
-Test Widgets
-------------
+For example:
 
-The test-widgets that are used to semi-automatically test RPA modules and many of the core RPA widgets are here,
-**./widgets/test_widgets/**
+- ``./plugins/annotation/widget/``
+- ``./plugins/app_color_corrector/widget/``
+- ``./plugins/timeline/widget/``
 
-By default the test widgets are commented out in, **./open_rv/pkgs/rpa_widgets_pkg/rpa_widgets_mode.py** under the RpaWidgetsMode class's self.init call.
-Kindly un-comment them and set the following environment variable to point to a folder containing media to use
-for testing,
+Inside a plugin, import the widget via its top-level plugin name (plugin
+folders are added to ``sys.path`` by the plugin manager):
 
-.. code-block:: shell
+.. code-block:: python
 
-   setenv env TEST_MEDIA_DIR /path/to/test/media
+   # in rpa/plugins/annotation/annotation.py
+   from annotation.widget.annotation import Annotation
 
-In your path to test media, kindly have 9 mp4 files which are named,
-one.mp4, two.mp4, three.mp4, four.mp4, five.mp4, six.mp4, seven.mp4, eight.mp4, nine.mp4
+Shared widgets
+--------------
 
-And have one png file,
-one.png
+Widgets reused by more than one plugin live under a shared folder:
+
+**./plugins/rpa_widgets/**
+
+- ``./plugins/rpa_widgets/sub_widgets/`` — small shared primitives
+  (color_circle, slider_toolbar, striped_frame, title_media_editor, …).
+- ``./plugins/rpa_widgets/session_io/`` — OTIO session reader/writer; used by
+  ``app_session_io`` and ``session_auto_saver``.
+- ``./plugins/rpa_widgets/rpa_interpreter/`` — used by ``rpa_interpreter`` and
+  ``clips_loop_mode_toggler``.
+
+Import as ``rpa_widgets.<package>.<module>``:
+
+.. code-block:: python
+
+   from rpa_widgets.sub_widgets.slider_toolbar import SliderToolBar
+   from rpa_widgets.session_io.session_io import SessionIO
+
+Test harnesses
+--------------
+
+Manual-test widgets for RPA APIs live at **./test_widgets/** (outside the
+plugin tree).
 
 =============================
 How to create an RPA widget ?
 =============================
 
-To get started with creating RPA widgets, you can look at MediaPathOverlay RPA widget,
-**./widgets/media_path_overlay/media_path_overlay.py**
-It is a simple RPA widget that overlays the media-path of the current clip in your forground playlist.
-
-Anatomy of an RPA widget
-------------------------
-
-A RPA widget will take in rpa and main_window as the arguments in it's __init__ method.
+A plugin widget is just a PySide widget that takes ``rpa`` and a parent
+(typically the main window) in its ``__init__``:
 
 .. code-block:: python
 
-   class MediaPathOverlay(QtWidgets.QWidget):
+   class MyWidget(QtWidgets.QWidget):
 
       def __init__(self, rpa, main_window):
-         super().__init__(main_window)        
+         super().__init__(main_window)
          self.__rpa = rpa
 
-**rpa** - A RPA widget needs to get an instance of RPA to start manipulating the RPA session.
-**main_window** - And it needs an instance of the PySide MainWindow to which it needs to be parented to.
-
+The plugin's entry-point ``.py`` instantiates the widget inside its
+``app_init(self, rpa_app)`` method and parents it to ``rpa_app.main_window``.
 
 ================================================
 How to make RPA widgets available inside of RV ?
 ================================================
 
-Since RPA widgets are PySide widgets and RV allows us to create RV Packages with PySide widgets, we can create RV packages that import and use these RPA widgets.
-
-As an example you can see how the following RV Package loads all the RPA widgets,
-**./open_rv/pkgs/rpa_widgets_pkg/rpa_widgets_mode.py**
+Plugins are loaded by the RPA plugin manager (see
+``./open_rv/pkgs/rpa_widgets_pkg/rpa_widgets_mode.py``). Once a plugin is
+listed in the active plugin config (e.g. ``./plugins/open_app_plugins.cfg``),
+its widget is created and shown during ``app_init``.

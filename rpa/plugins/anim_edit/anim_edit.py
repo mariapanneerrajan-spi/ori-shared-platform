@@ -1,6 +1,6 @@
 from PySide2 import QtCore, QtGui, QtWidgets
 from rpa.app.skin.widgets.itv_dock_widget import ItvDockWidget
-from rpa.widgets.frame_editor.frame_editor import FrameEditor
+from anim_edit.widget.frame_editor import FrameEditor
 
 
 class AnimEdit:

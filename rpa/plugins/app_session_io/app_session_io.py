@@ -1,7 +1,7 @@
 import os
 from PySide2 import QtCore, QtGui, QtWidgets
 from PySide2.QtWidgets import QAction
-from rpa.widgets.session_io.session_io import SessionIO
+from rpa_widgets.session_io.session_io import SessionIO
 
 
 class AppSessionIO(QtCore.QObject):

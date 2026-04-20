@@ -1,7 +1,7 @@
 from PySide2 import QtCore, QtWidgets, QtGui
 import os
 from rpa.app.skin.widgets.itv_dock_widget import ItvDockWidget
-from rpa.widgets.session_auto_saver.session_auto_saver import SessionAutoSaver as _SessionAutoSaver
+from session_auto_saver.widget.session_auto_saver import SessionAutoSaver as _SessionAutoSaver
 
 
 class SessionAutoSaver(QtCore.QObject):

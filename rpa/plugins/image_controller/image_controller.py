@@ -1,5 +1,5 @@
 from PySide2 import QtCore
-from rpa.widgets.image_controller.image_controller import ImageController as RpaImageController
+from image_controller.widget.image_controller import ImageController as RpaImageController
 
 
 class ImageController(QtCore.QObject):

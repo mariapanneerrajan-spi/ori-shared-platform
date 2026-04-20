@@ -1,5 +1,5 @@
 from PySide2 import QtCore, QtGui, QtWidgets
-from rpa.widgets.color_corrector.controller import Controller
+from app_color_corrector.widget.controller import Controller
 from rpa.app.skin.widgets.itv_dock_widget import ItvDockWidget
 
 

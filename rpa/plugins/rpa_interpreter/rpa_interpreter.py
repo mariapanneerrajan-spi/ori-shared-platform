@@ -1,6 +1,6 @@
 from PySide2 import QtCore, QtGui
 from rpa.app.skin.widgets.itv_dock_widget import ItvDockWidget
-from rpa.widgets.rpa_interpreter.rpa_interpreter import RpaInterpreter as _RpaInterpreter
+from rpa_widgets.rpa_interpreter.rpa_interpreter import RpaInterpreter as _RpaInterpreter
 
 
 class RpaInterpreter(QtCore.QObject):

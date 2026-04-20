@@ -1,5 +1,5 @@
 from PySide2 import QtCore
-from rpa.widgets.interactive_modes.interactive_modes import InteractiveModes as RpaInteractiveModes
+from interactive_modes.widget.interactive_modes import InteractiveModes as RpaInteractiveModes
 
 
 class InteractiveModes(QtCore.QObject):

@@ -1,5 +1,5 @@
 from PySide2 import QtCore, QtGui
-from rpa.widgets.session_assistant.session_assistant import SessionAssistant
+from app_session_assistant.widget.session_assistant import SessionAssistant
 
 
 class AppSessionAssistant:

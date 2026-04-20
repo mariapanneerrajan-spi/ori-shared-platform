@@ -1,5 +1,5 @@
 from PySide2 import QtCore, QtWidgets, QtGui
-from rpa.widgets.background_modes.background_modes \
+from background_modes.widget.background_modes \
     import BackgroundModes as RpaBackgroundModes
 from rpa.session_state.annotations import Annotation
 from rpa.session_state.color_corrections import ColorCorrection

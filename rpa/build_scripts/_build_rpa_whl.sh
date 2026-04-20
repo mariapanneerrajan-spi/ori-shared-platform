@@ -2,7 +2,7 @@
 
 set -e
 
-INCLUDE_DIRS=("api" "open_rv/rpa_core" "session_state" "utils" "widgets")
+INCLUDE_DIRS=("api" "open_rv/rpa_core" "session_state" "utils")
 PACKAGE_NAME="rpa"
 
 TMPDIR=$(mktemp -d)

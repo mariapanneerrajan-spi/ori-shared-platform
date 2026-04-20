@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 from rpa.app.skin.plugin_manager.settings_widget.qt_compat import QWidget, QComboBox
 from rpa.app.skin.plugin_manager.settings_widget.views.editors.base_editor import BaseEditor
 from rpa.app.skin.plugin_manager.settings_widget.models.setting_item import SettingItem
-from rpa.widgets.sub_widgets.dropdown_combobox import DropdownComboBox
+from rpa.app.skin.widgets.dropdown_combobox import DropdownComboBox
 
 
 class EnumEditor(BaseEditor):

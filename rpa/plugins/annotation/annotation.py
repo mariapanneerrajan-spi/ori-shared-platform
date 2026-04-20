@@ -1,6 +1,6 @@
 from PySide2 import QtCore
-from rpa.widgets.annotation.annotation import Annotation as RpaAnnotation
-import rpa.widgets.annotation.constants as C
+from annotation.widget.annotation import Annotation as RpaAnnotation
+import annotation.widget.constants as C
 
 
 class Annotation(QtCore.QObject):

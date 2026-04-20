@@ -206,7 +206,7 @@ Next, instances of the desired RPA widgets are created by passing:
 
 .. code-block:: python
 
-   from rpa.widgets.session_manager.session_manager import SessionManager
+   from app_session_manager.widget.session_manager import SessionManager
    ...
    self.__session_manager = SessionManager(self.__rpa, self.__main_window)
 

@@ -1,5 +1,5 @@
 from PySide2 import QtCore, QtGui, QtWidgets
-from rpa.widgets.sub_widgets.slider_toolbar import SliderToolBar
+from rpa_widgets.sub_widgets.slider_toolbar import SliderToolBar
 from view_controller.actions import Actions
 import math
 

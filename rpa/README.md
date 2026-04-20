@@ -22,7 +22,7 @@ Prebuilt packages for adding rpa(Review Plugin API) and rpa widgets into Open RV
 
 ## Build and Install (dev mode)
 
-Point `RV_HOME` at your OpenRV installation, then from the repo root:
+Point `RV_HOME` environment variable to your OpenRV installation, then from the repo root:
 
 ```
 python rpa/dev_setup.py build          # build rvpkgs into rpa/local_install/ (no RV_HOME needed)

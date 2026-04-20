@@ -13,7 +13,7 @@ import sys
 import logging
 
 from PySide2 import QtCore, QtGui
-from rpa.app.skin.widgets.itv_dock_widget import ItvDockWidget
+from rpa.app.widgets.itv_dock_widget import ItvDockWidget
 
 from app_console_logger.log_bridge import (
     LogBridge, QtLogHandler, StreamTee)

@@ -5,7 +5,7 @@ is configured here.
 
 import os
 from typing import List
-from rpa.app.skin.plugin_manager.model import ConfigPath
+from rpa.app.plugin_manager.model import ConfigPath
 
 
 def get()->List[ConfigPath]:

@@ -28,7 +28,7 @@ if _PKG_PARENT not in sys.path:
 from rpa.app.cli.env_keys import RPA_APP_CLI_ARGS_JSON
 from rpa.app.cli.plugin_cli_discovery import (
     discover_cli_modules, build_parser, parse_and_serialize)
-from rpa.app.skin.plugin_manager.plugin_config_reader import resolve_plugin_folders
+from rpa.app.plugin_manager.plugin_config_reader import resolve_plugin_folders
 
 
 def _get_plugin_config_paths():

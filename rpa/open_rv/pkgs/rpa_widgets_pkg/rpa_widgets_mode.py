@@ -13,14 +13,14 @@ import platform
 import logging
 from logging.handlers import RotatingFileHandler
 from rpa.rpa import Rpa
-from rpa.app.skin.plugin_manager.controller import Controller as PluginManager
+from rpa.app.plugin_manager.controller import Controller as PluginManager
 from rpa.app import plugin_path_configs
-from rpa.app.skin.dbid_mapper import DbidMapper
-from rpa.app.core.viewport_user_input_rx import ViewportUserInputRx
-from rpa.app.core.viewport_binding_filter import ViewportBindingFilter
+from rpa.app.dbid_mapper import DbidMapper
+from rpa.app.viewport_user_input_rx import ViewportUserInputRx
+from rpa.app.viewport_binding_filter import ViewportBindingFilter
 from rpa.utils import default_connection_maker
-from rpa.app.skin.app_main_window import AppMainWindow
-from rpa.app.skin.app_stylesheet import apply_app_styling
+from rpa.app.app_main_window import AppMainWindow
+from rpa.app.app_stylesheet import apply_app_styling
 
 
 def create_config(parent=None):

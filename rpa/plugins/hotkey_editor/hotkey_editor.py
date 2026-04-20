@@ -6,7 +6,7 @@ from PySide2.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTreeWidget,
                               QMainWindow, QMenuBar, QMenu, QAction, QSplitter)
 from PySide2.QtCore import Qt, Signal
 from PySide2.QtGui import QKeySequence, QFont
-from rpa.app.skin.widgets.itv_dock_widget import ItvDockWidget
+from rpa.app.widgets.itv_dock_widget import ItvDockWidget
 
 
 class HotkeyEditDialog(QDialog):

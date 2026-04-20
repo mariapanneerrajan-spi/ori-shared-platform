@@ -6,11 +6,11 @@ Cross-platform build script for development mode.
 Builds OpenRV packages (.rvpkg), installs them locally,
 and installs Python dependencies into OpenRV's Python.
 
-Usage:
-    python dev_setup.py build          # Build + install rvpkgs (no RV_HOME needed)
-    python dev_setup.py install-deps   # Install Python deps into OpenRV Python
-    python dev_setup.py all            # Both (default)
-    python dev_setup.py clean          # Remove local_install/
+Usage (run from the repo root):
+    python rpa/dev_setup.py build          # Build + install rvpkgs (no RV_HOME needed)
+    python rpa/dev_setup.py install-deps   # Install Python deps into OpenRV Python
+    python rpa/dev_setup.py all            # Both (default)
+    python rpa/dev_setup.py clean          # Remove rpa/local_install/
 
 RV_HOME environment variable (or --rv-home flag) is required for
 install-deps and all commands (not needed for build-only).
@@ -73,8 +73,8 @@ def find_rv_python(rv_home):
 
 def build_rvpkg_rpa_core(output_dir):
     """Build rpa_core-1.0.rvpkg from source files."""
-    pkg_dir = ROOT_DIR / "rpa" / "open_rv" / "pkgs" / "rpa_core_pkg"
-    api_dir = ROOT_DIR / "rpa" / "open_rv" / "rpa_core" / "api"
+    pkg_dir = ROOT_DIR / "open_rv" / "pkgs" / "rpa_core_pkg"
+    api_dir = ROOT_DIR / "open_rv" / "rpa_core" / "api"
     pkg_path = output_dir / "rpa_core-1.0.rvpkg"
 
     with zipfile.ZipFile(pkg_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -90,7 +90,7 @@ def build_rvpkg_rpa_core(output_dir):
 
 def build_rvpkg_rpa_widgets(output_dir):
     """Build rpa_widgets-1.0.rvpkg from source files."""
-    pkg_dir = ROOT_DIR / "rpa" / "open_rv" / "pkgs" / "rpa_widgets_pkg"
+    pkg_dir = ROOT_DIR / "open_rv" / "pkgs" / "rpa_widgets_pkg"
     pkg_path = output_dir / "rpa_widgets-1.0.rvpkg"
 
     with zipfile.ZipFile(pkg_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -311,7 +311,7 @@ def cmd_install_deps(rv_home):
         print("  WARNING: Proceeding without constraints — existing packages may be upgraded!")
 
     req_files = [
-        ROOT_DIR / "rpa" / "build_scripts" / "requirements.txt",
+        ROOT_DIR / "requirements.txt",
     ]
 
     print("Installing Python dependencies into OpenRV Python...")

@@ -21,21 +21,25 @@ if "%RV_HOME%"=="" (
 )
 
 if not exist "%SCRIPT_DIR%\local_install\lib\open_rv\Packages" (
-    echo ERROR: local_install not found. Run 'python dev_setup.py build' first.
+    echo ERROR: local_install not found. Run 'python rpa/dev_setup.py build' first.
     exit /b 1
 )
 
-REM Python modules importable directly from source
-set "PYTHONPATH=%SCRIPT_DIR%;%PYTHONPATH%"
+REM Python modules importable directly from source (parent of rpa/ on PYTHONPATH)
+set "PYTHONPATH=%SCRIPT_DIR%\..;%PYTHONPATH%"
 
 REM RV packages installed by dev_setup.py
 set "RV_SUPPORT_PATH=%SCRIPT_DIR%\local_install\lib\open_rv"
 
 REM Plugin config
-set "RPA_APP_CORE_PLUGINS_CONFIG=%SCRIPT_DIR%\rpa\plugins\open_app_plugins.cfg"
+set "RPA_APP_CORE_PLUGINS_CONFIG=%SCRIPT_DIR%\plugins\open_app_plugins.cfg"
 
 REM Qt settings
 set "QT_LOGGING_RULES=*=false;qt.core.critical=true;qt.core.fatal=true"
 set "QTWEBENGINE_DISABLE_SANDBOX=1"
 
+REM Run from the parent of rpa/ so cwd's "rpa" resolves to the package
+REM directory, not the rpa.py module file sitting in the rpa folder.
+pushd "%SCRIPT_DIR%\.."
 python -m rpa.app.launch_app %*
+popd

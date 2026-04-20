@@ -2,7 +2,7 @@ This is a list of all the contributors to review_plugin_api, sorted alphabetical
 by first name.
 
 If you know of somebody that we missed or have corrections, please email:
-itview-dev@imageworks.com
+rpa-app-dev@imageworks.com
 
 * Akim Ruslanov (He/Him)
 * Cottalango Leon (He/Him)

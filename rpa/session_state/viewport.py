@@ -5,6 +5,16 @@ import uuid
 
 
 @dataclass
+class Fill:
+    BLACK:str = "black"
+    GREY18:str = "grey18"
+    GREY50:str = "grey50"
+    WHITE:str = "white"
+    CHECKER:str = "checker"
+    CROSSHATCH:str = "crosshatch"
+
+
+@dataclass
 class Feedback:
     is_visible:bool = True
     are_strokes_visible:bool = True
@@ -12,6 +22,8 @@ class Feedback:
     are_clip_ccs_visible:bool = True
     are_frame_ccs_visible:bool = True
     are_region_ccs_visible:bool = True
+    annotation_ghosting:bool = False
+    annotation_holding:bool = False
 
 @dataclass
 class Transforms:
@@ -59,6 +71,8 @@ class HtmlOverlay:
     border_width:float = 0.0
     border_color:list[float] = field(default_factory=lambda: [1.0, 1.0, 1.0, 1.0])
     border_dashed:bool = False
+    content_width:object = None
+    content_height:object = None
     __custom_attrs: dict = field(default_factory=dict)
 
     def set_custom_attr(self, attr_id, value):
@@ -78,10 +92,12 @@ class Viewport:
         self.__bg = None
         self.current_clip = None
         self.bg_mode = 0
+        self.source_frame_lock = False
         self.mix_mode = 0
         self.feedback = Feedback()
         self.__transforms = Transforms()
         self.color_channel = 4
+        self.color_channel_order = "RGBA"
         self.fstop = 0.0
         self.gamma = 1.0
         self.rotation = 0
@@ -93,6 +109,8 @@ class Viewport:
         self.__html_overlays = {}
         self.__opengl_overlays: dict[str, OpenGlOverlay] = {}
         self.__current_clip_geometry = None
+        self.mask = None
+        self.fill = Fill.BLACK
 
     def create_html_overlay(self, html_overlay_data):
         overlay_id = self.__overlay_uuid_generator.next_uuid()

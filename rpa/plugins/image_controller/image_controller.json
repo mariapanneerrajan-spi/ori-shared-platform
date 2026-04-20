@@ -1,0 +1,7 @@
+{
+  "class_name": "ImageController",
+  "app_version": "1.0.0",
+  "author_email": "rpa-app-dev@imageworks.com",
+  "plugin_name": "Image Controller",
+  "description": "Collection of image operations done on the viewport"
+}

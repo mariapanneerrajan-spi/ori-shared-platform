@@ -1,0 +1,7 @@
+{
+    "class_name": "AppConsoleLogger",
+    "app_version": "1.0.0",
+    "author_email": "rpa-app-dev@imageworks.com",
+    "plugin_name": "Console Logger",
+    "description": "In-app console showing Python print output and RPA log messages, with source/level filtering."
+}

@@ -5,7 +5,7 @@
    :maxdepth: 2
 
    introduction
+   build_and_launch
    rpa_api_modules/index
-   rpa_widgets
+   app
    open_rv_implementation
-   release_notes

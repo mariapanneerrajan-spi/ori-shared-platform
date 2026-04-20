@@ -103,26 +103,27 @@ def convert_to_global_frame(frame, node):
     """
     temp_prop = f"{node}.find.frames"
     set_property(temp_prop, [frame])
-    global_frame_map = rvc.mapPropertyToGlobalFrames("find.frames", 1)
-    if len(global_frame_map) > 0:
-        return global_frame_map[0]
-    return -1
+    try:
+        global_frames = rvc.mapPropertyToGlobalFrames("find.frames", 1)
+        return global_frames[0] if global_frames else -1
+    finally:
+        delete_property(temp_prop)
 
 def get_global_frame(source_node, src_frame):
     if source_node is None:
         return
     return convert_to_global_frame(src_frame, source_node)
 
-# convert value from itview to rv value
-def convert_translate_itview_to_rv(value:float, h:int)->float:
-    """Function that helps convert Itview translate value to RV translate value.
+# convert value from rpa_app to rv value
+def convert_translate_app_to_rv(value:float, h:int)->float:
+    """Function that helps convert App translate value to RV translate value.
        h is the height of the image in which translation is applied.
     """
     return (value / h)
 
-# convert value from rv to itview value
-def convert_translate_rv_to_itview(value:float, h:int)->float:
-    """Function that helps convert RV translate value to Itview translate value.
+# convert value from rv to rpa_app value
+def convert_translate_rv_to_rpa_app(value:float, h:int)->float:
+    """Function that helps convert RV translate value to App translate value.
        h is the height of the image in which translation is applied.
     """
     return float(round(value * h))

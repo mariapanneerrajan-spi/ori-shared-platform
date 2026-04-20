@@ -1,15 +1,15 @@
-def rv_to_itview(width, height, x, y=None):
+def rv_to_rpa_app(width, height, x, y=None):
     if y is None:
-        a = rv_to_itview(width, height, 0, 0)
-        b = rv_to_itview(width, height, x, 0)
+        a = rv_to_rpa_app(width, height, 0, 0)
+        b = rv_to_rpa_app(width, height, x, 0)
         return b[0] - a[0]
     return [x * height / width + 0.5, y + 0.5]
 
 
-def itview_to_rv(width, height, x, y=None):
+def app_to_rv(width, height, x, y=None):
     if y is None:
-        a = itview_to_rv(width, height, 0, 0)
-        b = itview_to_rv(width, height, x, 0)
+        a = app_to_rv(width, height, 0, 0)
+        b = app_to_rv(width, height, x, 0)
         return b[0] - a[0]
     return [(x - 0.5) * width / height, y - 0.5]
 

@@ -17,4 +17,14 @@ use rvui;
     state.scrubDisabled = false;
 }
 
+\: is_timeline_visible(bool; ) {
+    State state = data();
+    state.timeline neq nil && state.timeline._active;
+}
+
+\: is_timeline_magnifier_visible(bool; ) {
+    State state = data();
+    state.motionScope neq nil && state.motionScope._active;
+}
+
 }

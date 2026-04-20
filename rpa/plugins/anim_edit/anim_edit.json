@@ -1,0 +1,7 @@
+{
+    "class_name": "AnimEdit",
+    "app_version": "1.0.0",
+    "author_email": "rpa-app-dev@imageworks.com",
+    "plugin_name": "AnimEdit",
+    "description": "Provides frame editing options to hold or drop frames per clip"
+}

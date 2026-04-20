@@ -1,0 +1,7 @@
+{
+    "class_name": "AppSessionIO",
+    "app_version": "1.0.0",
+    "author_email": "rpa-app-dev@imageworks.com",
+    "plugin_name": "App SessionIO",
+    "description": "Manages file load and save operations in a session"
+}

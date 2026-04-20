@@ -81,6 +81,8 @@ class Session:
         self.__id = os.environ.get("RPA_SESSION_ID", uuid.uuid4().hex)
         self.__playlist_uuid_generator = SequentialUUIDGenerator(
             os.environ.get("PLAYLIST_UUID_SEED", uuid.uuid4().hex))
+        self.__cc_uuid_generator = SequentialUUIDGenerator(
+            os.environ.get("CC_UUID_SEED", uuid.uuid4().hex))
 
         self.__playlists = {}
         self.__deleted_playlists = {}
@@ -120,11 +122,10 @@ class Session:
 
     def create_playlists(
         self, names:List[str], index:Optional[int]=None, ids=None):
-
         if ids is None: ids = [uuid.uuid4().hex for _ in  names]
         new_playlists = {}
         for id, name in zip(ids, names):
-            new_playlists[id] = Playlist(id, name)
+            new_playlists[id] = Playlist(id, name, self.__cc_uuid_generator)
 
         old_playlist_ids = list(self.__playlists.keys())
         new_playlist_ids = list(new_playlists.keys())
@@ -229,9 +230,11 @@ class Session:
         if len(self.__playlists.keys()) > 0:
             return
         pl_id = self.__playlist_uuid_generator.next_uuid()
-        playlist = Playlist(pl_id, "New Playlist")
+        playlist = Playlist(pl_id, "New Playlist", self.__cc_uuid_generator)
         self.__playlists[pl_id] = playlist
         self.__viewport.fg = pl_id
+        self.__viewport.bg = None
+        self.__viewport.current_clip = None
 
     def __update_fg_bg_before_delete(self, id):
         if id == self.__viewport.bg: self.__viewport.bg  = None
@@ -245,14 +248,18 @@ class Session:
                     index -= 1
                 else:
                     index += 1
-                self.__viewport.fg = ids[index]
+                self.set_fg_playlist(ids[index])
             else:
                 self.__viewport.fg = None
 
     def set_fg_playlist(self, id):
+        old_id = self.__viewport.fg
         self.__viewport.fg = id
         if self.__viewport.bg is None:
-            self.__update_fg_active_clips()
+            update_active_clips = self.get_custom_playlist_attr(id, "update_active_clips") is not False \
+                and self.get_custom_playlist_attr(old_id, "update_active_clips") is not False
+            if update_active_clips:
+                self.__update_fg_active_clips()
         else:
             self.match_fg_bg_clip_indexes()
 
@@ -280,12 +287,17 @@ class Session:
     #######################################################################
 
     def get_clip(self, id:str):
-        return Clip.id_to_self.get(id)
+        if id is None: return
+        clip = Clip.id_to_self.get(id)
+        if clip is None: return
+        return clip
 
     def update_activated_clip_indexes(self):
         fg_playlist = self.get_playlist(self.__viewport.fg)
         clip_ids = fg_playlist.clip_ids
         if len(clip_ids) == 0:
+            return
+        if fg_playlist.get_custom_attr("update_active_clips") is False:
             return
 
         fg_active_clip_ids = fg_playlist.active_clip_ids
@@ -310,6 +322,8 @@ class Session:
         bg_playlist = self.get_playlist(self.__viewport.bg)
         if len(fg_active_clip_ids) == 0:
             bg_playlist.set_active_clips([])
+        elif len(fg_active_clip_ids) == len(clip_ids) and self.__viewport.source_frame_lock == 0:
+            bg_playlist.set_active_clips(bg_playlist.clip_ids)
         else:
             fg_sel_clip_indexes = []
             for clip_id in fg_active_clip_ids:
@@ -333,6 +347,7 @@ class Session:
         def delete_playlists(playlists):
             pl_ids = list(playlists.keys())
             for pl_id in pl_ids:
+                self.__update_fg_bg_before_delete(pl_id)
                 playlist = playlists.pop(pl_id)
                 playlist.delete()
 
@@ -342,6 +357,7 @@ class Session:
         self.__activated_clip_indexes.clear()
         self.__custom_attrs.clear()
         self.current_frame_mode = 0
+        self.__timeline.update()
 
         gc.collect()
         self.__create_if_empty()

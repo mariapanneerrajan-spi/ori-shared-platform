@@ -36,7 +36,7 @@ class ClipAttrTranslateX:
 
         h = commands.sourceMediaInfo(
             f"{source_group}_source").get("uncropHeight")
-        converted_value = prop_util.convert_translate_itview_to_rv(value, h)
+        converted_value = prop_util.convert_translate_app_to_rv(value, h)
 
         commands.setFloatProperty(
             f"{source_group}_transform2D.transform.translate",
@@ -49,7 +49,7 @@ class ClipAttrTranslateX:
 
         h = commands.sourceMediaInfo(
             f"{source_group}_source").get("uncropHeight")
-        converted_value = prop_util.convert_translate_rv_to_itview(value[0], h)
+        converted_value = prop_util.convert_translate_rv_to_rpa_app(value[0], h)
         return converted_value
 
 

@@ -1,30 +1,54 @@
+import asyncio
 import math
 import os
 import re
+import threading
 from dataclasses import dataclass
 import imageio.v3 as iio
 import numpy as np
 from OpenGL import GL
 try:
     from PySide2 import QtGui, QtCore, QtWebEngineWidgets
-except ImportError:
+except:
     from PySide6 import QtGui, QtCore, QtWebEngineWidgets
 from rv import commands as rvc
 from rv import extra_commands as rve
 from rv import runtime
 from rpa.open_rv.rpa_core.api import prop_util
-from rpa.session_state.utils import Point, itview_to_screen
+from rpa.session_state.utils import Point, app_to_screen
+try:
+    from playwright.async_api import async_playwright
+except ImportError:
+    async_playwright = None
 
 
-def render_html_to_image(width, height, html):
+def render_html_to_image(html, opacity):
     doc = QtGui.QTextDocument()
+    # Setting the margin to 0 ensures no extra padding is added outside your HTML body
+    doc.setDocumentMargin(0)
     doc.setHtml(html)
-    doc.setTextWidth(width)
 
-    image = QtGui.QImage(width, height, QtGui.QImage.Format_ARGB32)
+    # 1. Ask the document for its natural, unconstrained width
+    dynamic_width = doc.idealWidth()
+    doc.setTextWidth(dynamic_width)
+
+    # 2. Once the width is locked in, ask for the resulting height
+    dynamic_height = doc.size().height()
+
+    # 3. Convert the float sizes to integers (rounding up to avoid cutting off 1 pixel)
+    img_width = math.ceil(dynamic_width)
+    img_height = math.ceil(dynamic_height)
+
+    # 4. Create the image using our new dynamic sizes
+    image = QtGui.QImage(img_width, img_height, QtGui.QImage.Format_ARGB32)
     image.fill(QtCore.Qt.transparent)
 
     painter = QtGui.QPainter(image)
+
+    # Optional: Turn on antialiasing so the text renders as cleanly as possible
+    painter.setRenderHint(QtGui.QPainter.Antialiasing)
+    painter.setRenderHint(QtGui.QPainter.TextAntialiasing)
+    painter.setOpacity(opacity)
     doc.drawContents(painter)
     painter.end()
 
@@ -32,7 +56,7 @@ def render_html_to_image(width, height, html):
 
 def qimage_to_gl_texture(image):
     ptr = image.bits()
-    ptr = ptr[: image.byteCount()]
+    ptr = ptr[: image.sizeInBytes()]
     img_array = np.frombuffer(ptr, dtype=np.uint8).reshape(
         (image.height(), image.width(), 4))
 
@@ -83,41 +107,64 @@ class FlipMode:
     VERT: str = "Vertically"
 
 
-class WebEngineRenderer:
+class PlaywrightRenderer(QtCore.QObject):
+    SIG_RENDER_FINISHED = QtCore.Signal(object) # image
 
-    def __init__(self, callback):
+    def __init__(self, async_loop, callback):
+        super().__init__()
+        self.__async_loop = async_loop
+        self.__last_future = self.__async_loop.create_future()
         self.__callback = callback
-        self.__empty_image = QtGui.QImage(1, 1, QtGui.QImage.Format_ARGB32)
-        self.__empty_image.fill(QtCore.Qt.transparent)
-        self.__timer = QtCore.QTimer()
-        self.__timer.setSingleShot(True)
-        self.__timer.setInterval(200)
-        self.__timer.timeout.connect(self.__render_finished)
-        self.__timer2 = QtCore.QTimer()
-        self.__timer2.setSingleShot(True)
-        self.__timer2.setInterval(1000)
-        self.__timer2.timeout.connect(self.__render_finished)
-        self.__web_engine = QtWebEngineWidgets.QWebEngineView()
-        self.__web_engine.setProperty("SHOW_IN_ITVIEW_MODE", True)
-        self.__web_engine.setAttribute(QtCore.Qt.WA_DontShowOnScreen, True)
-        self.__web_engine.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
-        self.__web_engine.setStyleSheet("background: transparent")
-        self.__web_engine.page().setBackgroundColor(QtCore.Qt.transparent)
-        self.__web_engine.loadFinished.connect(self.__load_finished)
-        self.__web_engine.show()
+        self.__empty_image = None
+        self.__playwright = None
+        self.__browser = None
+        self.__page = None
+        self.SIG_RENDER_FINISHED.connect(self.render_finished)
 
-    def render(self, html, width, height):
-        self.__callback(self.__empty_image)
-        self.__web_engine.resize(width, height)
-        self.__web_engine.setHtml(html)
+    def __del__(self):
+        asyncio.run_coroutine_threadsafe(self.cleanup(), self.__async_loop)
 
-    def __load_finished(self, ok):
-        if not ok: return
-        self.__timer.start()
-        self.__timer2.start()
+    async def cleanup(self):
+        if self.__page:
+            await self.__page.close()
+        if self.__browser:
+            await self.__browser.close()
+        if self.__playwright:
+            await self.__playwright.stop()
 
-    def __render_finished(self):
-        image = self.__web_engine.grab().toImage()
+    def render(self, html_overlay):
+        self.__last_future.cancel()
+        if html_overlay.html:
+            self.__last_future = asyncio.run_coroutine_threadsafe(self.render_async(html_overlay), self.__async_loop)
+
+    async def render_async(self, html_overlay):
+        if async_playwright is None:
+            raise ImportError(
+                "playwright is required for HTML overlay rendering. "
+                "Install it with: pip install playwright && playwright install chromium"
+            )
+        if self.__playwright is None:
+            self.__playwright = await async_playwright().start()
+        if self.__browser is None:
+            self.__browser = await self.__playwright.chromium.launch(
+                headless=True,
+                executable_path="/spfs/opt/playwright/chromium-1187/chrome-linux/chrome")
+        if self.__page is None:
+            self.__page = await self.__browser.new_page()
+
+        await self.__page.set_viewport_size({
+            "width": html_overlay.width,
+            "height": html_overlay.height})
+        await self.__page.set_content(html_overlay.html, wait_until="networkidle")
+        element = await self.__page.query_selector("#content")  # or any locator
+        if not element:
+            element = self.__page
+        png_bytes = await element.screenshot(type="png", omit_background=True)
+        image = QtGui.QImage()
+        image.loadFromData(QtCore.QByteArray(png_bytes), "PNG")
+        self.SIG_RENDER_FINISHED.emit(image)
+
+    def render_finished(self, image):
         self.__callback(image)
 
 
@@ -155,42 +202,46 @@ class ViewportApiCore(QtCore.QObject):
 
         self.__last_geometry = None
 
-        self.__web_engine_renderers = {}
+        self.__renderers = {}
+
+        self.__async_loop = asyncio.new_event_loop()
+        def background_loop():
+            asyncio.set_event_loop(self.__async_loop)
+            self.__async_loop.run_forever()
+        self.__async_thread = threading.Thread(target=background_loop, daemon=True)
+        self.__async_thread.start()
 
     def create_html_overlay(self, html_overlay):
         id = self.__session.viewport.create_html_overlay(html_overlay)
         html_overlay = self.__session.viewport.get_html_overlay(id)
-        self.__set_html_overlay_texture(id, html_overlay)
         return id
 
-    def set_html_overlay(self, id:str, html_overlay):
+    def set_html_overlay(self, id:str, html_overlay, opacity=1.0):
         is_success = \
             self.__session.viewport.set_html_overlay(id, html_overlay)
         if is_success:
             html_overlay = self.__session.viewport.get_html_overlay(id)
-            self.__set_html_overlay_texture(id, html_overlay)
+            self.__set_html_overlay_texture(id, html_overlay, opacity)
         return is_success
 
-    def __set_html_overlay_texture(self, id, html_overlay):
+    def __set_html_overlay_texture(self, id, html_overlay, opacity=1.0):
         def update_texture(image):
+            if not image: return
             old_texture_id = html_overlay.get_custom_attr("gl_texture_id")
             if old_texture_id is not None:
                 GL.glDeleteTextures([old_texture_id])
             new_texture_id = qimage_to_gl_texture(image)
             html_overlay.set_custom_attr("gl_texture_id", new_texture_id)
+            html_overlay.set_custom_attr("content_size", [image.width(), image.height()])
             rvc.redraw()
         if html_overlay.use_web_engine:
-            web_engine_renderer = self.__web_engine_renderers.get(id)
-            if web_engine_renderer is None:
-                web_engine_renderer = WebEngineRenderer(update_texture)
-                self.__web_engine_renderers[id] = web_engine_renderer
-            web_engine_renderer.render(
-                html_overlay.html,
-                html_overlay.width,
-                html_overlay.height)
+            renderer = self.__renderers.get(id)
+            if renderer is None:
+                renderer = PlaywrightRenderer(self.__async_loop, update_texture)
+                self.__renderers[id] = renderer
+            renderer.render(html_overlay)
         else:
-            image = render_html_to_image(
-                html_overlay.width, html_overlay.height, html_overlay.html)
+            image = render_html_to_image(html_overlay.html, opacity)
             update_texture(image)
 
     def get_html_overlay(self, id:str):
@@ -202,7 +253,7 @@ class ViewportApiCore(QtCore.QObject):
     def delete_html_overlays(self, ids):
         is_success = self.__session.viewport.delete_html_overlays(ids)
         for id in ids:
-            self.__web_engine_renderers.pop(id, None)
+            self.__renderers.pop(id, None)
         rvc.redraw()
         return is_success
 
@@ -225,6 +276,20 @@ class ViewportApiCore(QtCore.QObject):
         rvc.redraw()
         return is_success
 
+    def get_pixel_info(self, pointer):
+        # Normalize input to floats for consistent API calls
+        x, y = map(float, pointer[:2])
+
+        pixel_info = rvc.sourceAtPixel((x, y))
+        if not pixel_info:
+            return None
+
+        # Access the first element and safely extract coordinates
+        info = pixel_info[0]
+        px = info.get('px')
+        py = info.get('py')
+
+        return (px, py) if px is not None and py is not None else None
 
     def start_drag(self, pointer):
         self.__down_point = rve.translation()
@@ -261,8 +326,8 @@ class ViewportApiCore(QtCore.QObject):
 
     def get_current_clip_geometry(self):
         clip_id = self.__session.viewport.current_clip
-        if not clip_id: return
-        clip = self.__session.get_clip(self.__session.viewport.current_clip)
+        clip = self.__session.get_clip(clip_id)
+        if clip is None: return
         source_node = clip.get_custom_attr("rv_source_group")
         if not source_node: return
         return rvc.imageGeometry(f"{source_node}_source")
@@ -310,69 +375,65 @@ class ViewportApiCore(QtCore.QObject):
     def get_scale(self):
         return prop_util.get_property("#RVDispTransform2D.transform.scale")[0]
 
+    def is_flipped_x(self):
+        return self.__session.viewport.transforms.flip_x
+
     def flip_x(self, state):
-        current_scale = \
+        scale = \
             rvc.getFloatProperty("#RVDispTransform2D.transform.scale")
-        current_h_scale = current_scale[0]
-        current_v_scale = current_scale[1]
-        new_h_scale = (current_h_scale * -1)
+        h_scale = scale[0]
+        v_scale = scale[1]
 
-        current_translation = \
+        translation = \
             rvc.getFloatProperty("#RVDispTransform2D.transform.translate")
-        current_dx = current_translation[0]
-        current_dy = current_translation[1]
-        new_dx = (current_dx * -1)
+        dx = translation[0]
+        dy = translation[1]
 
-        self.set_translation(0.0, 0.0)
-        self.set_scale(new_h_scale, current_v_scale)
-        self.set_translation(new_dx, current_dy)
+        if state != (h_scale < 0):
+            self.set_translation(0.0, 0.0)
+            self.set_scale(h_scale * -1, v_scale)
+            self.set_translation(dx * -1, dy)
 
         self.__session.viewport.transforms.flip_x = state
 
-        new_scale = rvc.getFloatProperty("#RVDispTransform2D.transform.scale")
-        h_scale = new_scale[0]
-        v_scale = new_scale[1]
-
-        if h_scale < 0 and v_scale < 0:
+        if self.__session.viewport.transforms.flip_x and self.__session.viewport.transforms.flip_y:
             mode = FlipMode.BOTH
-        elif h_scale > 0 and v_scale < 0:
-            mode = FlipMode.VERT
-        elif h_scale < 0 and state:
+        elif self.__session.viewport.transforms.flip_x:
             mode = FlipMode.HORIZ
+        elif self.__session.viewport.transforms.flip_y:
+            mode = FlipMode.VERT
         else:
             mode = FlipMode.NONE
 
         self.display_msg(f"Flipped: {mode}")
         return True
 
+    def is_flipped_y(self):
+        return self.__session.viewport.transforms.flip_y
+
     def flip_y(self, state):
-        current_scale = \
+        scale = \
             rvc.getFloatProperty("#RVDispTransform2D.transform.scale")
-        current_h_scale = current_scale[0]
-        current_v_scale = current_scale[1]
-        new_v_scale = (current_v_scale * -1)
-
-        current_translation = \
-            rvc.getFloatProperty("#RVDispTransform2D.transform.translate")
-        current_dx = current_translation[0]
-        current_dy = current_translation[1]
-        new_dy = (current_dy * -1)
-
-        self.set_translation(0.0, 0.0)
-        self.set_scale(current_h_scale, new_v_scale)
-        self.set_translation(current_dx, new_dy)
-
-        self.__session.viewport.transforms.flip_y = state
-
-        scale = rvc.getFloatProperty("#RVDispTransform2D.transform.scale")
         h_scale = scale[0]
         v_scale = scale[1]
 
-        if h_scale < 0 and v_scale < 0:
+        translation = \
+            rvc.getFloatProperty("#RVDispTransform2D.transform.translate")
+        dx = translation[0]
+        dy = translation[1]
+
+        if state != (v_scale < 0):
+            self.set_translation(0.0, 0.0)
+            self.set_scale(h_scale, v_scale * -1)
+            self.set_translation(dx, dy * -1)
+
+        self.__session.viewport.transforms.flip_y = state
+
+        if self.__session.viewport.transforms.flip_x and self.__session.viewport.transforms.flip_y:
             mode = FlipMode.BOTH
-        elif h_scale < 0 and v_scale > 0:
+        elif self.__session.viewport.transforms.flip_x:
             mode = FlipMode.HORIZ
-        elif v_scale < 0 and state:
+        elif self.__session.viewport.transforms.flip_y:
             mode = FlipMode.VERT
         else:
             mode = FlipMode.NONE
@@ -384,6 +445,9 @@ class ViewportApiCore(QtCore.QObject):
         if state:
             view_width, view_height = rvc.viewSize()
             image_width, image_height = self.__get_current_dimensions()
+            if image_width == 0 and image_height == 0:
+                self.display_msg("No media loaded. Please open an image or video to begin.")
+                return
             margins = rvc.margins()
             dimensions = [view_width - margins[0] - margins[1],
                           view_height - margins[2] - margins[3]]
@@ -405,6 +469,9 @@ class ViewportApiCore(QtCore.QObject):
         if state:
             view_width, view_height = rvc.viewSize()
             image_width, image_height = self.__get_current_dimensions()
+            if image_width == 0 and image_height == 0:
+                self.display_msg("No media loaded. Please open an image or video to begin.")
+                return
             margins = rvc.margins()
             dimensions = [view_width - margins[0] - margins[1],
                           view_height - margins[2] - margins[3]]
@@ -431,6 +498,9 @@ class ViewportApiCore(QtCore.QObject):
         if state:
             view_width, view_height = rvc.viewSize()
             image_width, image_height = self.__get_current_dimensions()
+            if image_width == 0 and image_height == 0:
+                self.display_msg("No media loaded. Please open an image or video to begin.")
+                return
             margins = rvc.margins()
             dimensions = [view_width - margins[0] - margins[1],
                           view_height - margins[2] - margins[3]]
@@ -462,16 +532,15 @@ class ViewportApiCore(QtCore.QObject):
 
     def set_text_cursor(self, position, size)-> bool:
         clip_id = self.__session.viewport.current_clip
-        if not clip_id: return False
-
         clip = self.__session.get_clip(clip_id)
+        if clip is None: return
         source_node = clip.get_custom_attr("rv_source_group")
         if not source_node: return False
 
         source_node = f"{source_node}_source"
         geometry = rvc.imageGeometry(source_node)
         position = Point(
-            *itview_to_screen(geometry, position.x, position.y))
+            *app_to_screen(geometry, position.x, position.y))
         is_success = self.__session.viewport.set_text_cursor(position, size)
         rvc.redraw()
         return is_success
@@ -486,9 +555,8 @@ class ViewportApiCore(QtCore.QObject):
 
     def set_cross_hair_cursor(self, position)-> bool:
         clip_id = self.__session.viewport.current_clip
-        if not clip_id: return False
-
         clip = self.__session.get_clip(clip_id)
+        if clip is None: return
         source_node = clip.get_custom_attr("rv_source_group")
         if not source_node: return False
 
@@ -496,7 +564,7 @@ class ViewportApiCore(QtCore.QObject):
         geometry = rvc.imageGeometry(source_node)
         if position:
             position = Point(
-                *itview_to_screen(geometry, position.x, position.y))
+                *app_to_screen(geometry, position.x, position.y))
         self.__session.viewport.set_cross_hair_cursor(position)
         rvc.redraw()
         return True
@@ -524,7 +592,7 @@ class ViewportApiCore(QtCore.QObject):
         smi = rvc.sourceMediaInfo(sources[0])
         return smi["width"], smi["height"]
 
-    def __get_screen_dimensions(self):
+    def get_viewport_dimensions(self):
         return rvc.viewSize()
 
     def get_translation(self):
@@ -547,11 +615,25 @@ class ViewportApiCore(QtCore.QObject):
     def get_rotation(self):
         return self.__session.viewport.rotation
 
+    def get_viewport_fill(self)->str:
+        return self.__session.viewport.fill
+
+    def set_viewport_fill(self, option:str):
+        self.__session.viewport.fill = option
+        rvc.setBGMethod(option)
+        rvc.redraw()
+        return True
+
+    def get_mask(self):
+        return self.__session.viewport.mask
+
     def set_mask(self, mask):
+        self.__session.viewport.mask = mask
         self.__unload_mask()
 
         # No Mask
         if mask is None:
+            rvc.redraw()
             return True
 
         # Mask: image path
@@ -578,8 +660,10 @@ class ViewportApiCore(QtCore.QObject):
 
         # Mask: none of the above
         else:
+            rvc.redraw()
             return False
 
+        rvc.redraw()
         return True
 
     def __unload_mask(self):
@@ -905,6 +989,8 @@ class ViewportApiCore(QtCore.QObject):
 
     def __apply_image_transforms(self, vertices):
         clip_id = self.__session.viewport.current_clip
+        clip = self.__session.get_clip(clip_id)
+        if clip is None: return
         frame = rvc.frame() # global frame
         src_frame = rve.sourceFrame(frame) # source frame
 
@@ -973,6 +1059,9 @@ class ViewportApiCore(QtCore.QObject):
             scale_x * np.linalg.norm(g[1] - g[0]),
             scale_y * np.linalg.norm(g[3] - g[0])])
         width, height = self.__get_current_dimensions()
+        if width == 0 and height == 0:
+            self.display_msg("No media loaded. Please open an image or video to begin.")
+            return
         pixel_size = size / np.array([width, height])
         return pixel_size
 
@@ -1062,11 +1151,13 @@ class ViewportApiCore(QtCore.QObject):
 
         source = sources[0]
         source_group = rvc.nodeGroup(source)
-        source_tf_node = f"{source_group}_transform2D"
-        stack_tf_node = f"{source_group}_stack_t_{source_group}"
+        secondary_transform = f"{source_group}_secondary_transform"
         h = rvc.sourceMediaInfo(f"{source}").get("uncropHeight")
 
         clip_id = self.__session_api.get_current_clip()
+        if clip_id is None: return
+        clip = self.__session.get_clip(clip_id)
+        if clip is None: return
         playlist_id = self.__session_api.get_playlist_of_clip(clip_id)
         if playlist_id is None: return
 
@@ -1083,33 +1174,37 @@ class ViewportApiCore(QtCore.QObject):
 
         if rotation is not None and rotation != "":
             rvc.setFloatProperty(
-                f"{stack_tf_node}.transform.rotate", [float(rotation)])
+                f"{secondary_transform}.transform.rotate", [float(rotation)])
 
         if translate_x is not None and translate_x != "":
-            translate_x = prop_util.convert_translate_itview_to_rv(translate_x, h)
-            t_y = rvc.getFloatProperty(f"{stack_tf_node}.transform.translate")[1]
+            translate_x = prop_util.convert_translate_app_to_rv(translate_x, h)
+            t_y = rvc.getFloatProperty(f"{secondary_transform}.transform.translate")[1]
             rvc.setFloatProperty(
-                f"{stack_tf_node}.transform.translate", [float(translate_x), t_y])
+                f"{secondary_transform}.transform.translate", [float(translate_x), t_y])
 
         if translate_y is not None and translate_y != "":
-            translate_y = prop_util.convert_translate_itview_to_rv(translate_y, h)
-            t_x = rvc.getFloatProperty(f"{stack_tf_node}.transform.translate")[0]
+            translate_y = prop_util.convert_translate_app_to_rv(translate_y, h)
+            t_x = rvc.getFloatProperty(f"{secondary_transform}.transform.translate")[0]
             rvc.setFloatProperty(
-                f"{stack_tf_node}.transform.translate", [t_x, float(translate_y)])
+                f"{secondary_transform}.transform.translate", [t_x, float(translate_y)])
 
         if scale_x is not None and scale_x != "":
-            s_y = rvc.getFloatProperty(f"{stack_tf_node}.transform.scale")[1]
+            s_y = rvc.getFloatProperty(f"{secondary_transform}.transform.scale")[1]
             rvc.setFloatProperty(
-                f"{stack_tf_node}.transform.scale", [float(scale_x), s_y])
+                f"{secondary_transform}.transform.scale", [float(scale_x), s_y])
 
         if scale_y is not None and scale_y != "":
-            s_x = rvc.getFloatProperty(f"{stack_tf_node}.transform.scale")[0]
+            s_x = rvc.getFloatProperty(f"{secondary_transform}.transform.scale")[0]
             rvc.setFloatProperty(
-                f"{stack_tf_node}.transform.scale", [s_x, float(scale_y)])
+                f"{secondary_transform}.transform.scale", [s_x, float(scale_y)])
 
         self.__frame = frame
 
     def render(self, event):
+        clip_id = self.__session_api.get_current_clip()
+        if clip_id is None: return
+        clip = self.__session.get_clip(clip_id)
+        if clip is None: return
         # Masks
         self.__render_mask(event)
 
@@ -1160,9 +1255,9 @@ class ViewportApiCore(QtCore.QObject):
         frame = rvc.frame() # global frame
         src_frame = rve.sourceFrame(frame) # source frame
         clip_id = self.__session_api.get_current_clip()
-        if clip_id is None:
-            return
-
+        if clip_id is None: return
+        clip = self.__session.get_clip(clip_id)
+        if clip is None: return
         sources = rvc.sourcesAtFrame(frame)
         if len(sources) != 1:
             return
@@ -1201,9 +1296,13 @@ class ViewportApiCore(QtCore.QObject):
             if not html_overlay.is_visible: continue
             bg_opacity = html_overlay.bg_opacity
             texture_id = html_overlay.get_custom_attr("gl_texture_id")
+            if not texture_id: continue
+            content_size = html_overlay.get_custom_attr("content_size")
+            if not content_size: continue
+            overlay_width, overlay_height = content_size
 
             if html_overlay.placement == "frame_inside_overlay":
-                ratio = html_overlay.width / html_overlay.height
+                ratio = overlay_width / overlay_height
                 size = rt - lb
                 w = max(size[0], ratio * size[1])
                 h = w / ratio
@@ -1211,7 +1310,7 @@ class ViewportApiCore(QtCore.QObject):
                 l, r = center[0] - w/2, center[0] + w/2   # left & right
                 b, t = center[1] - h/2, center[1] + h/2   # bottom & top
             else:
-                w, h = html_overlay.width, html_overlay.height
+                w, h = overlay_width, overlay_height
                 x = html_overlay.x * self.__viewport_widget.width()
                 y = html_overlay.y * self.__viewport_widget.height()
                 l, r = x - w/2, x + w/2   # left & right
@@ -1275,15 +1374,15 @@ class ViewportApiCore(QtCore.QObject):
     def is_feedback_visible(self, category:int)-> bool:
         if category == 1:
             return self.__session.viewport.feedback.is_visible
-        elif category == 2:
+        if category == 2:
             return self.__session.viewport.feedback.are_strokes_visible
-        elif category == 3:
+        if category == 3:
             return self.__session.viewport.feedback.are_texts_visible
-        elif category == 4:
+        if category == 4:
             return self.__session.viewport.feedback.are_clip_ccs_visible
-        elif category == 5:
+        if category == 5:
             return self.__session.viewport.feedback.are_frame_ccs_visible
-        elif category == 6:
+        if category == 6:
             return self.__session.viewport.feedback.are_region_ccs_visible
 
     def set_feedback_visibility(self, category:int, value:bool)-> None:
@@ -1349,10 +1448,15 @@ class ViewportApiCore(QtCore.QObject):
             if html_overlay.placement is not None:
                 continue
 
+            try:
+                overlay_width, overlay_height = html_overlay.get_custom_attr("content_size")
+            except:
+                overlay_width, overlay_height = 100, 100
+
             x = html_overlay.x * self.__viewport_widget.width()
             y = self.__viewport_widget.height() - (html_overlay.y * self.__viewport_widget.height())
-            half_w = html_overlay.width/2
-            half_h = html_overlay.height/2
+            half_w = overlay_width/2
+            half_h = overlay_height/2
 
             left = x - half_w
             right = x + half_w

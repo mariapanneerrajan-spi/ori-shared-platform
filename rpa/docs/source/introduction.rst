@@ -5,55 +5,83 @@ Introduction
    :local:
    :depth: 1
 
-==================
-Value Proposition
-==================
+=================
+What is this?
+=================
 
-To empower VFX and Animation studios to use their custom built review workflows and tools across any review-playback system (such as OpenRV or xStudio),
-RPA provides a unified collection of **API modules** and **widgets**.
+This project ships two things that work together:
 
-RPA is designed for pipeline developers to build their review workflows and tools once and deploy them seamlessly across any review-playback system that supports the RPA implementation.
+1. **RPA (Review Plugin API)** — a review-system-agnostic API for building
+   review workflows and tools. RPA owns its own Session and delegates the
+   actual playback work to whatever review system is plugged in underneath.
+2. **The App** — a review product built on top of RPA. It hosts the UI,
+   loads RPA-based plugins, and currently runs on **OpenRV** as its
+   underlying review-playback system.
 
-RPA is an abstraction layer between the review widgets you create and the review-playback systems you use.
-
+Plugins written against RPA never talk to the underlying review system
+directly — they go through RPA, which keeps plugins portable across any
+review system that provides an RPA implementation.
 
 .. image:: _static/rpa_value_proposition.png
    :alt: RPA value proposition
    :align: center
    :scale: 50%
 
-=====================================================
-Why RPA-Widgets work across Review-Playback-Systems ?
-=====================================================
+==========================
+RPA in one paragraph
+==========================
 
-RPA widgets work consistently across different review-playback systems because,
+RPA is composed of **five API modules** plus a **delegate manager**:
 
-1. RPA widgets are built using **RPA-API** instead of any particular review-playback-system's API.
-2. RPA manages its own **Session**.
+* ``session_api`` — playlists, clips, clip attributes.
+* ``annotation_api`` — strokes and text notes on clips.
+* ``timeline_api`` — playback state, frame navigation, volume.
+* ``color_api`` — color correction and color spaces.
+* ``viewport_api`` — viewport transforms and overlays.
 
-Whenever a RPA widget using the RPA API creates playlists or clips, or adds annotations, text notes, or color corrections, RPA updates and maintains this information in its own Session. This Session is completely independent of the underlying review-playback-system's (like OpenRV or xStudio) session. That means the widgets you build with RPA-API rely only on RPA's Session and not on the specific review application—ensuring compatibility and flexibility across platforms.
+The **delegate manager** is how RPA plugs into a concrete review system.
+Every RPA method is routed through a 4-tier pipeline (permission → pre →
+core → post delegates). The *core* delegate is the review-system-specific
+implementation — for this project, that's OpenRV. Extra pre/post delegates
+are how plugins extend RPA without modifying core code.
+
+See :doc:`rpa_api_modules/index` for the full API reference.
+
+==========================
+RPA owns its own Session
+==========================
+
+When a plugin creates playlists, clips, annotations, or color corrections,
+RPA updates its own Session first — that Session is the source of truth.
+The underlying review system is then synchronized to reflect it. This
+means plugins only depend on RPA's model, not on any particular review
+application's session format.
 
 .. image:: _static/rpa_session_wiring.png
-   :alt: RPA Session
+   :alt: RPA Session wiring
    :align: center
 
+The Session model is inspired by **Sony Pictures Imageworks' Academy
+SciTech Award-winning playback system, App**:
 
-===================================================================
-RPA is powered by Academy Sci-Tech Award-winning Itview's concepts!
-===================================================================
-
-By using RPA, pipeline developers can instantly tap into a world-class review session which has been built on top of the core-concepts of **Sony Pictures Imageworks' Academy SciTech Award-winning playback system, Itview**.
-With RPA, setting up a review session is simple:
-You start with a new Session,
-
-* Inside a **Session**, you can organize your work using Playlists.
-
-* Each **Playlist** contains Clips, which represent shots or media files.
-
-* Every **Clip** can store detailed information like attributes, annotations (drawings and texts), and even color-corrections.
-
-In short, RPA makes it easy to **build powerful, studio-grade review tools—without reinventing the wheel**.
+* A **Session** organizes work into Playlists.
+* Each **Playlist** contains Clips (shots or media files).
+* Each **Clip** carries attributes, annotations, and color corrections.
 
 .. image:: _static/rpa_session.png
-   :alt: RPA value proposition
+   :alt: RPA Session tree
    :align: center
+
+==========================
+The App in one paragraph
+==========================
+
+The App provides its own ``AppMainWindow`` as the host for the review UI.
+On startup it hides OpenRV's stock main window, re-parents OpenRV's
+viewport into ``AppMainWindow``, and hands a **plugin manager** a list of
+plugins to load. Each plugin receives the main window and an RPA instance
+and builds its UI on top of RPA.
+
+See :doc:`app` for the App architecture and plugin contract, and
+:doc:`open_rv_implementation` for how the OpenRV review-system glue is
+wired up.

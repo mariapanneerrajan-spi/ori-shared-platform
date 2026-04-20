@@ -1,5 +1,5 @@
-Open RV Implementation
-======================
+OpenRV Implementation
+=====================
 
 .. contents::
    :local:
@@ -8,217 +8,152 @@ Open RV Implementation
 ========
 Overview
 ========
-RPA implementation in Open RV has been done using the following 2 RV Packages that you can find in the RPA repo,
 
-1. ./open_rv/pkgs/rpa_core_pkg/rpa_core_mode.py
-2. ./open_rv/pkgs/rpa_widgets_pkg/rpa_widgets_mode.py
+OpenRV is the underlying review-playback system the App currently runs
+on. The integration lives in two RV packages built by
+``rpa/dev_setup.py``:
 
-=====================
-RPA Core - Rv Package
-=====================
-In the RPA repository, the RV Package responsible for adding RPA Core into RV can be found at:
-**./open_rv/pkgs/rpa_core_pkg/rpa_core_mode.py**
+1. ``./open_rv/pkgs/rpa_core_pkg/rpa_core_mode.py`` — installs the OpenRV
+   implementation of RPA (the "core delegate").
+2. ``./open_rv/pkgs/rpa_widgets_pkg/rpa_widgets_mode.py`` — on
+   ``session-initialized``, replaces OpenRV's UI with the App and loads
+   plugins.
 
-At its core, RPA is a collection of abstractions designed to support the development of RPA-widgets that support review-workflows in VFX & Animation studios. These widgets rely on the RPA abstractions for their functionality.
+For how to build these packages and launch the App, see
+:doc:`build_and_launch`.
 
-To make practical use of these widgets, they must be run inside a review player that provides an actual implementation of the RPA abstractions. We refer to this implementation as the RPA Core.
+=============================
+RPA Core — RV Package
+=============================
+
+Located at **./open_rv/pkgs/rpa_core_pkg/rpa_core_mode.py**.
+
+RPA itself is a collection of abstractions (the five API modules). To be
+useful, those abstractions need a concrete implementation that drives an
+actual review player. That implementation is called **RPA Core**. For
+OpenRV, RPA Core is delivered as an RV package.
 
 .. image:: _static/rpa_widgets_on_abstractions.png
-   :alt: RPA Widgets built on RPA abstractions
+   :alt: Plugin widgets built on RPA abstractions
    :align: center
    :scale: 50%
 
-In the context of RV, all RPA abstractions across various RPA modules are implemented as an RV Package.
-
 .. image:: _static/rpa_core_rv_pkg.png
-   :alt: Rpa Session is the source of truth
+   :alt: RPA Core RV package
    :align: center
 
-The implementation is designed such that the RPA session is treated as the source of truth, not the RV session. This means updates flow from the RPA session to the RV session: the RPA session is updated first, and the RV session is then synchronized based on the state of the RPA session.
+The RPA session is the source of truth. Updates flow **RPA session →
+RV session**: RPA session state is updated first, and the RV session is
+synchronized to reflect it.
 
 .. image:: _static/rpa_rv_session.png
-   :alt: Rpa Session is the source of truth
+   :alt: RPA session is the source of truth
    :align: center
 
-The RPA Core instance is attached to QtWidgets.QApplication instance of Open RV.
+The RPA Core instance is attached to the Qt ``QApplication`` so the
+second RV package (below) can retrieve it:
 
 .. code-block:: python
 
    app = QtWidgets.QApplication.instance()
    app.rpa_core = self.__rpa_core
 
-This is done so that subsequent RV packages that have RPA widgets, can get the RPA Core instance from the QtWidgets.QApplication instance.
+================================
+RPA Widgets — RV Package
+================================
 
-========================
-RPA Widgets - Rv Package
-========================
-In the RPA repository, the RV Package responsible for adding all available RPA widgets into RV can be found at:
-**./open_rv/pkgs/rpa_widgets_pkg/rpa_widgets_mode.py**
+Located at **./open_rv/pkgs/rpa_widgets_pkg/rpa_widgets_mode.py**.
 
----------
-RPA Mode:
----------
-Since RPA has its own Session that works on top of the RV Session, using RV widgets that directly manipulate the RV Session without going through the RPA Session will cause unexpected behavior. So this RV Package, adds a menu in RV's main menu-bar called **Open RV -> Switch to RPA**.
+On OpenRV's ``session-initialized`` event, ``RpaWidgetsMode`` bootstraps
+the App and takes over the window entirely. There is no opt-in / opt-out
+menu — OpenRV's stock UI is replaced by ``AppMainWindow``, which hosts
+OpenRV's viewport and every plugin's widget.
 
-.. image:: _static/rpa_mode.png
-   :alt: RPA Mode Menu in RV
-   :align: center
+Bootstrap sequence
+------------------
 
-By default RPA mode is not enabled so that you can continue to use all RV Session features without any interference from RPA Session. When you are want to use RPA Session with all the RPA widgets, you can enable RPA Mode by clicking on the **Open RV -> Switch to RPA** menu in the main menu-bar of RV.
+1. Locate OpenRV's main window via ``rv.qtutils.sessionWindow()`` and its
+   viewport widget by ``objectName="no session"`` (set in OpenRV's
+   ``GLView`` constructor). The viewport lookup asserts loudly so a
+   rename in a future OpenRV release fails fast instead of silently
+   producing a black window.
+2. **Hide — do not delete** — OpenRV's main window. ``GLView`` holds a raw
+   C++ pointer (``m_doc``) to ``RvDocument``; destroying the stock window
+   would dangle that pointer and crash on the next render. Hiding is
+   enough to strip OpenRV's menus, toolbars, and hotkeys from the visible
+   UI.
+3. Create shared ``QSettings(org="imageworks.com", app="rpa_app")`` and
+   logger instances. Both are reused by the App and the RPA instance so
+   they write to the same on-disk settings file and the same log file.
+4. Construct ``AppMainWindow(viewport_widget, settings, logger)``. It
+   re-parents OpenRV's viewport into itself and owns the menu bar, layout
+   persistence, dark title bar, fullscreen toggle, and the ``get_*_menu``
+   accessors plugins use.
+5. Apply App styling to the ``QApplication``, construct ``Rpa(settings,
+   logger)``, wire core delegates via
+   ``default_connection_maker.set_core_delegates_for_all_rpa``, hand the
+   viewport to ``rpa_core.viewport_api._set_viewport_widget``, and install
+   ``ViewportUserInputRx`` on the viewport.
+6. Initialize the plugin manager with the ``AppMainWindow``, the RPA
+   instance, the ``DbidMapper``, and the viewport input receiver, then
+   ``show()`` the main window.
 
-When you enter RPA mode your current RV Session will be cleared and many RV features/widgets will be replaced/disabled to accommodate RPA Session. So make sure to save your RV Session if needed before proceeding.
+Plugin loading
+--------------
 
-.. image:: _static/rpa_mode_warn.png
-   :alt: RPA Mode Warning
-   :align: center
+The plugin set is listed in ``rpa/plugins/open_app_plugins.cfg``. The
+plugin contract (``app_init(self, app)`` / ``post_app_init(self)``,
+``<plugin>.json`` metadata, etc.) is documented in :doc:`app`. Plugins
+use RPA to manipulate the session and parent their widgets to
+``AppMainWindow`` — they never talk to OpenRV directly.
 
-~~~~~~~~~~~~~~~~~~~~~~~~~
-RPA Mode User Experience:
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Shutdown
+--------
 
-In RPA mode, after the following RV featurs are replaced/disabled you will be able to use the remaining RV features/widgets interchangeably with RPA widgets for the most part.
+When the user closes ``AppMainWindow``, it emits ``SIG_CLOSED``.
+``RpaWidgetsMode`` responds by closing the hidden ``RvDocument`` so
+OpenRV's ``before-session-deletion`` handler runs in
+``RvDocument::closeEvent``; after that Qt's ``quitOnLastWindowClosed``
+takes the process down. The App is deliberately OpenRV-agnostic — this
+RV-specific shutdown glue lives in the RV package, not in
+``AppMainWindow``.
 
-For the best RPA Mode user experience, it is recommended to primarily use RPA widgets instead of default RV widgets for your review feedback workflows. This is because the RPA widgets are designed to work seamlessly with the RPA Session and provide a more consistent user experience.
-
-.. image:: _static/rpa_mode_ui.png
-   :alt: RPA Mode User Experience
-   :align: center
-
-~~~~~~~~~~~~~~~~~
-Widgets Replaced:
-~~~~~~~~~~~~~~~~~
-- RV Session Manager is replaced by **RPA Session Manager** (toggle with 'x' hotkey)
-- RV Timeline is replaced by **RPA Timeline Manager** (toggle with 'F2' hotkey)
-- RV Annotation Tools is replaced by **RPA Annotation Tools** (toggle with 'F10' hotkey)
-
-~~~~~~~~~~~~~~
-Menus Removed:
-~~~~~~~~~~~~~~
-- **File**
-- **Edit**
-- **Annotation**
-- **Sequence**
-- **Stack**
-- **Layout**
-- **Control**
-   - Next Marked Frame
-   - Prev Marked Frame
-   - Matching Frame Of Next Source
-   - Matching Frame Of Previous Source
-- **Tools**
-   - Default Views
-   - Sequence
-   - Replace
-   - Over
-   - Add
-   - Difference
-   - Different (Inverted)
-   - Title
-   - Menu Bar
-   - Top View Toolbar
-   - Bottom View Toolbar
-   - Session Manager
-   - Annotation
-   - Timeline
-- **Image**
-   - Rotation
-   - Flip
-   - Flop
-   - Cycle Stack Forward
-   - Cycle Stack Backward
-- Right clicking on the viewport will not show the RV context menu.
-- Middle-Mouse-Click & drag will not translate the viewport. You can use Middle-Mouse-Click with Alt modifier and drag to do this instead.
-
-~~~~~~~~~~~~
-Menus Added:
-~~~~~~~~~~~~
-- **File(rpa)**
-   - Add Clips
-   - Save RPA Session
-   - Append Save RPA Session
-   - Replace Save RPA Session
-- **Tools->RPA Widgets**
-   - Session Manager
-   - Background Modes
-   - Annotation Tools
-   - Color Corrector
-   - Timeline
-   - Media Path Overlay
-   - Session Assistant
-   - RPA Interpreter
-   - Show FStop Slider
-   - Show Gamma Slider
-   - Show Rotation Slider
-- Double clicking on the viewport will enable users to add media as RPA Clips instead of RV source-groups.
-
-~~~~~~~~~~~~~~
-Exit RPA Mode:
-~~~~~~~~~~~~~~
-
-Once you enter RPA mode, Open RV will continue to stay in RPA mode even when you close and open Open RV. To exit out of RPA mode you can use the following menu from the main menu-bar of Open RV, **Open RV -> Exit out of RPA**.
-
-.. image:: _static/rpa_mode_exit.png
-   :alt: Exit out of RPA
-   :align: center
-
-When you exit RPA mode, your current Open RV will be closed and the next time you open Open RV it will launch in normal Open RV mode. So make sure to save your RPA session if needed before exiting RPA mode.
-
-.. image:: _static/rpa_mode_exit_warn.png
-   :alt: RPA Mode Exit Warning
-   :align: center
-
------------------------------
-Setting up RPA widgets in RV:
------------------------------
+-------------------------------
+Wiring RPA to OpenRV in code
+-------------------------------
 
 .. image:: _static/widgets_in_rpa.png
-   :alt: Rpa Session is the source of truth
+   :alt: Wiring RPA into OpenRV
    :align: center
 
-To use RPA widgets within RV, two key components are required:
+Two pieces are needed to run the App on OpenRV:
 
-1. An instance of RPA with the RPA Core added as a core delegate.
-2. The MainWindow instance used by the review player (RV).
+1. An ``Rpa`` instance with OpenRV's ``RpaCore`` attached as its core
+   delegate.
+2. The OpenRV viewport widget, which ``AppMainWindow`` hosts.
 
-In the file mentioned above, you will see how:
-
-1. An RPA instance is created. RV's implementation of the RPA Core is added to it as the core delegate.
-2. The MainWindow is obtained from RV using rv.qtutils.sessionWindow()
+``RpaWidgetsMode`` does this roughly as follows:
 
 .. code-block:: python
 
    from rpa.rpa import Rpa
-   ...
+   from rpa.open_rv.rpa_core.default_connection_maker import \
+       set_core_delegates_for_all_rpa
 
-   self.__main_window = rv.qtutils.sessionWindow()
-   app = QtWidgets.QApplication.instance()
-   self.__rpa_core = app.rpa_core
+   rv_main_window = rv.qtutils.sessionWindow()
+   app_qt = QtWidgets.QApplication.instance()
+   rpa_core = app_qt.rpa_core  # installed by the rpa_core RV package
 
-   self.__rpa = Rpa(create_config(self.__main_window), create_logger())
-   default_connection_maker.set_core_delegates_for_all_rpa(
-      self.__rpa, self.__rpa_core)
+   rpa = Rpa(settings, logger)
+   set_core_delegates_for_all_rpa(rpa, rpa_core)
 
-
-Next, instances of the desired RPA widgets are created by passing:
-
-1. The RPA instance, and
-2. RV's MainWindow.
-
-.. code-block:: python
-
-   from rpa.widgets.session_manager.session_manager import SessionManager
-   ...
-   self.__session_manager = SessionManager(self.__rpa, self.__main_window)
-
-
-====================================================
-How to build and install the above RPA RV Packages ?
-====================================================
-Follow the step by step instructions in **./rpa/README.md** under the "Build and Install" heading.
+After that, ``AppMainWindow`` is constructed around OpenRV's viewport
+widget, the plugin manager is initialized with ``AppMainWindow`` and
+``rpa``, and every plugin receives them via ``app_init(self, app)``.
 
 =================
 Media Attribution
 =================
 
-Documentation includes clips/screenshots from *Big Buck Bunny* by the Blender Foundation, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+Documentation includes clips/screenshots from *Big Buck Bunny* by the Blender Foundation, licensed under `CC BY 3.0 <https://creativecommons.org/licenses/by/3.0/>`_.
 Source: https://peach.blender.org/

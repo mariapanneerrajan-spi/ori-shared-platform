@@ -6,7 +6,10 @@ if [[ "$SCRIPT_DIR" != /spfs* ]]; then
     PROJ_DIR="$(dirname $SCRIPT_DIR)"
     PROJ_PARENT_DIR="$(dirname $PROJ_DIR)"
     export PYTHONPATH="$PROJ_PARENT_DIR:$PYTHONPATH"
+    echo $PYTHONPATH
     export RV_SUPPORT_PATH=$PROJ_DIR/local_install/lib/open_rv
+    export RPA_APP_CORE_PLUGINS_CONFIG="$PROJ_PARENT_DIR/rpa_app_plugins/open_app_plugins.cfg"
+    echo $RPA_APP_CORE_PLUGINS_CONFIG
 fi
 
-exec "$RV_HOME/bin/rv" "$@"
+exec "$RV_HOME/bin/rv" -flags ModeManagerPreload=ocio_source_setup "$@"

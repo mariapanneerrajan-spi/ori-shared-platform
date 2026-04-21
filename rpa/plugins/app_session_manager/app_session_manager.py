@@ -42,11 +42,15 @@ class AppSessionManager(QtCore.QObject):
         self.__session_api.delegate_mngr.add_post_delegate(
             self.__session_api.set_playlist_name,
             self.__playlist_name_changed)
-        self.__main_window.destroyed.connect(
-            self.__session_manager.save_preferences)
+        self.__main_window.SIG_CLOSED.connect(self.__on_main_window_closed)
         self.__settings_api.SIG_SETTINGS_CHANGED.connect(self.__setting_changed)
 
         self.__load_preferences()
+
+    def __on_main_window_closed(self):
+        self.__session_manager.flush_pending_save()
+        self.__save_preferences()
+        self.__config_api.sync()
 
     def __setting_changed(self, setting_id:str, value: Any):
         if setting_id == f"{Pref.PLUGIN}.{Pref.CONTROL}/{Pref.CURRENT_FRAME_MODE}":

@@ -244,8 +244,8 @@ class HeaderViewPrefCntrlr:
         return [attr_pair[0] for attr_pair in visually_sorted_columns]
 
     def set_sort_state(self, attr, order):
-        if not order:
-            order = QtCore.Qt.DescendingOrder
+        if order is None:
+            order = QtCore.Qt.AscendingOrder
 
         model_attrs = self.__source_model.attrs
         if any([not attr, attr not in model_attrs]):

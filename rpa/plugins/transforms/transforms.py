@@ -1,7 +1,7 @@
 import bisect
 import numpy as np
 from dataclasses import dataclass
-from PySide2 import QtCore, QtGui, QtWidgets
+from rpa.utils.qt import QtCore, QtGui, QtWidgets
 
 from transforms.actions import Actions
 from transforms.toolbar import TransformToolBar

@@ -1,11 +1,11 @@
 import sys
-from PySide2.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTreeWidget,
+from rpa.utils.qt.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTreeWidget,
                               QTreeWidgetItem, QLineEdit, QPushButton, QLabel,
                               QHeaderView, QKeySequenceEdit, QDialog,
                               QDialogButtonBox, QMessageBox, QApplication,
                               QMainWindow, QMenuBar, QMenu, QAction, QSplitter)
-from PySide2.QtCore import Qt, Signal
-from PySide2.QtGui import QKeySequence, QFont
+from rpa.utils.qt.QtCore import Qt, Signal
+from rpa.utils.qt.QtGui import QKeySequence, QFont
 from rpa.app.widgets.itv_dock_widget import ItvDockWidget
 
 
@@ -437,7 +437,7 @@ class HotkeyEditor(QWidget):
 
         dialog = HotkeyEditDialog(action_name, current_sequence, original_sequence, self)
 
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.Accepted:
             new_sequence = dialog.get_key_sequence()
 
             # Set new shortcut

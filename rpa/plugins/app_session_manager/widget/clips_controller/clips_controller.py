@@ -1,6 +1,6 @@
 try:
-    from PySide2 import QtCore, QtWidgets, QtGui
-    from PySide2.QtWidgets import QShortcut
+    from rpa.utils.qt import QtCore, QtWidgets, QtGui
+    from rpa.utils.qt.QtWidgets import QShortcut
 except:
     from PySide6 import QtCore, QtWidgets, QtGui
     from PySide6.QtGui import QShortcut

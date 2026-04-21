@@ -1,6 +1,6 @@
 import math
 try:
-    from PySide2 import QtCore, QtGui, QtWidgets
+    from rpa.utils.qt import QtCore, QtGui, QtWidgets
 except:
     from PySide6 import QtCore, QtGui, QtWidgets
 from rpa_widgets.sub_widgets import input_line_edit

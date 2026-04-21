@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtGui, QtWidgets
+from rpa.utils.qt import QtCore, QtGui, QtWidgets
 from rpa.app.widgets.itv_dock_widget import ItvDockWidget
 from anim_edit.widget.frame_editor import FrameEditor
 

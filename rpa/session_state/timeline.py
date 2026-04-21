@@ -11,7 +11,7 @@ class PlayingState:
 class AudioState:
     is_mute:bool = False
     is_audio_scrubbing_enabled:bool = False
-    volume:int = 0
+    volume:int = 100
 
 
 class Timeline:

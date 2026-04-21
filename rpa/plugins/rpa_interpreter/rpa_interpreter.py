@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtGui
+from rpa.utils.qt import QtCore, QtGui
 from rpa.app.widgets.itv_dock_widget import ItvDockWidget
 from rpa_widgets.rpa_interpreter.rpa_interpreter import RpaInterpreter as _RpaInterpreter
 

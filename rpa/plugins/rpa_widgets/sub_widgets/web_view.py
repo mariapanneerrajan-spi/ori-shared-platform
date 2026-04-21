@@ -1,9 +1,6 @@
 import os
 
-try:
-    from PySide2 import QtCore, QtGui, QtNetwork, QtWebEngineCore, QtWebEngineWidgets, QtWebChannel
-except:
-    from PySide6 import QtCore, QtGui, QtNetwork, QtWebEngineCore, QtWebEngineWidgets, QtWebChannel
+from rpa.utils.qt import QtCore, QtGui, QtNetwork, QtWebEngineCore, QtWebEngineWidgets, QtWebChannel
 
 class WebView(QtWebEngineWidgets.QWebEngineView):
 

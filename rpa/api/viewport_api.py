@@ -6,7 +6,7 @@ Manage viewport transforms and overlays.
 """
 
 try:
-    from PySide2 import QtCore
+    from rpa.utils.qt import QtCore
 except:
     from PySide6 import QtCore
 from typing import List, Optional, Tuple, Dict

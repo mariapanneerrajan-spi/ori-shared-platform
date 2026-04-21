@@ -1,7 +1,7 @@
 import os
 try:
-    from PySide2 import QtCore, QtWidgets
-    from PySide2.QtWidgets import QAction
+    from rpa.utils.qt import QtCore, QtWidgets
+    from rpa.utils.qt.QtWidgets import QAction
 except:
     from PySide6 import QtCore, QtWidgets
     from PySide6.QtGui import QAction
@@ -84,7 +84,7 @@ class SessionIO(QtCore.QObject):
         dialog = SessionIODialog(self.__main_window)
         dialog.setup(dialog_mode, self.__get_directory())
 
-        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+        if dialog.exec() == QtWidgets.QDialog.Accepted:
             filepath = dialog.get_selected_filepath()
             self.__last_location = os.path.dirname(filepath)
         else:

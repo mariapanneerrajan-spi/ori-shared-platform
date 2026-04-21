@@ -8,7 +8,7 @@ from importlib.abc import MetaPathFinder
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Union, Any
-from PySide2 import QtCore, QtGui, QtWidgets
+from rpa.utils.qt import QtCore, QtGui, QtWidgets
 from rpa.app.viewport_user_input_rx import ViewportUserInputRx
 from rpa.app.widgets.itv_dock_widget import ItvDockWidget
 from rpa.app.plugin_manager.model import Model, ConfigPath, \

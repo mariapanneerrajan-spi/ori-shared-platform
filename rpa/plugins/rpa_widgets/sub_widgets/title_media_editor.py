@@ -1,5 +1,5 @@
 try:
-    from PySide2 import QtCore, QtGui, QtWidgets
+    from rpa.utils.qt import QtCore, QtGui, QtWidgets
 except:
     from PySide6 import QtCore, QtGui, QtWidgets
 from dataclasses import dataclass
@@ -129,7 +129,7 @@ class TitleMediaEditor(QtWidgets.QDialog):
         self.__main_layout.addWidget(button_box)
 
     def __choose_font(self):
-        if self.__font_dialog.exec_():
+        if self.__font_dialog.exec():
             font = self.__font_dialog.get_font()
         else:
             font = None

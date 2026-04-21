@@ -2,7 +2,7 @@ import math
 import time
 from collections import deque
 try:
-    from PySide2 import QtCore
+    from rpa.utils.qt import QtCore
 except:
     from PySide6 import QtCore
 from OpenGL import GL

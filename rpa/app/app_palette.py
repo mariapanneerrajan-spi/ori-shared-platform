@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtGui
+from rpa.utils.qt import QtCore, QtGui
 
 
 class AppPalette(QtGui.QPalette):

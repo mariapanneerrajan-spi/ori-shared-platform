@@ -1,6 +1,6 @@
 import os
 try:
-    from PySide2 import QtWidgets
+    from rpa.utils.qt import QtWidgets
 except:
     from PySide6 import QtWidgets
 from rpa_widgets.session_io import constants as C

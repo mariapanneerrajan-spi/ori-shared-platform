@@ -11,8 +11,8 @@ import ctypes
 import platform
 
 try:
-    from PySide2 import QtWidgets
-    from PySide2.QtCore import Signal
+    from rpa.utils.qt import QtWidgets
+    from rpa.utils.qt.QtCore import Signal
 except ImportError:
     from PySide6 import QtWidgets
     from PySide6.QtCore import Signal

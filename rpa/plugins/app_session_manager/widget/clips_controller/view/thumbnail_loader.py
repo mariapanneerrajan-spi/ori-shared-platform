@@ -2,9 +2,9 @@ import time
 
 
 try:
-    from PySide2.QtCore import QObject, QUrl, QByteArray, QRect, QSize, QPoint, Qt
-    from PySide2.QtNetwork import QNetworkAccessManager, QNetworkRequest
-    from PySide2.QtGui import QImage, QPixmap, QColor, QPainter, QPolygon
+    from rpa.utils.qt.QtCore import QObject, QUrl, QByteArray, QRect, QSize, QPoint, Qt
+    from rpa.utils.qt.QtNetwork import QNetworkAccessManager, QNetworkRequest
+    from rpa.utils.qt.QtGui import QImage, QPixmap, QColor, QPainter, QPolygon
 except:
     from PySide6.QtCore import QObject, QUrl, QByteArray, QRect, QSize, QPoint, Qt
     from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest

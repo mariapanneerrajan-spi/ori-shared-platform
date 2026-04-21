@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from functools import partial
-from PySide2 import QtCore, QtGui, QtWidgets
+from rpa.utils.qt import QtCore, QtGui, QtWidgets
 from rpa.session_state.transforms import \
     TransformData, TransformType, DYNAMIC_TRANSFORM_ATTRS, STATIC_TRANSFORM_ATTRS, SCALE_ATTRS
 

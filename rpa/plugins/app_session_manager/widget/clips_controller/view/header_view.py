@@ -1,6 +1,6 @@
 try:
-    from PySide2 import QtCore, QtGui, QtWidgets
-    from PySide2.QtWidgets import QAction
+    from rpa.utils.qt import QtCore, QtGui, QtWidgets
+    from rpa.utils.qt.QtWidgets import QAction
 except:
     from PySide6 import QtCore, QtGui, QtWidgets
     from PySide6.QtGui import QAction
@@ -244,8 +244,8 @@ class HeaderViewPrefCntrlr:
         return [attr_pair[0] for attr_pair in visually_sorted_columns]
 
     def set_sort_state(self, attr, order):
-        if not order:
-            order = QtCore.Qt.DescendingOrder
+        if order is None:
+            order = QtCore.Qt.AscendingOrder
 
         model_attrs = self.__source_model.attrs
         if any([not attr, attr not in model_attrs]):

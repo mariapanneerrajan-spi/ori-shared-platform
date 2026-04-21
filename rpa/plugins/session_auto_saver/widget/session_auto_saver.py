@@ -1,7 +1,7 @@
 from typing import List
 try:
-    from PySide2 import QtCore, QtGui, QtWidgets
-    from PySide2.QtWidgets import QAction
+    from rpa.utils.qt import QtCore, QtGui, QtWidgets
+    from rpa.utils.qt.QtWidgets import QAction
 except:
     from PySide6 import QtCore, QtGui, QtWidgets
     from PySide6.QtGui import QAction
@@ -188,7 +188,7 @@ class SessionAutoSaver(QtWidgets.QWidget):
                 self.__update_dont_show_auto_save_popup_pref)
             auto_save_popup.SIG_PREF_CHANGED.connect(
                 self.__update_dont_show_auto_save_popup_checkbox_state)
-            auto_save_popup.exec_()
+            auto_save_popup.exec()
             if auto_save_popup.result() == QtWidgets.QMessageBox.Yes:
                 playlist_ids = self.__rpa.session_api.get_playlists() # default playlist
                 latest_auto_save = max(auto_saves, key=os.path.getmtime)
@@ -225,10 +225,10 @@ class SessionAutoSaver(QtWidgets.QWidget):
             msg_box = _styled_msg_dialog(
                 self.__main_window, "Info",
                 "No auto saved session exists!")
-            msg_box.exec_()
+            msg_box.exec()
         else:
             self.__auto_save_browser.populate_files(self.__get_auto_saves())
-            self.__auto_save_browser.exec_()
+            self.__auto_save_browser.exec()
 
     def __get_auto_saves(self):
         autosaves = glob.glob(
@@ -254,7 +254,7 @@ class SessionAutoSaver(QtWidgets.QWidget):
             self.__main_window, "Warning",
             "Are you sure you want to replace the current session with "
             "the auto saved session?")
-        result = msg_box.exec_()
+        result = msg_box.exec()
         if result == QtWidgets.QDialog.Accepted:
             playlist_ids = self.__rpa.session_api.get_playlists() # default playlist
             success = self.__otio_reader.read_otio_file(file)

@@ -7,10 +7,7 @@ from dataclasses import dataclass
 import imageio.v3 as iio
 import numpy as np
 from OpenGL import GL
-try:
-    from PySide2 import QtGui, QtCore, QtWebEngineWidgets
-except:
-    from PySide6 import QtGui, QtCore, QtWebEngineWidgets
+from rpa.utils.qt import QtGui, QtCore, QtWebEngineWidgets
 from rv import commands as rvc
 from rv import extra_commands as rve
 from rv import runtime

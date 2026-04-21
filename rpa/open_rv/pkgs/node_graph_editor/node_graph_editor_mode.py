@@ -19,18 +19,9 @@ SOLID Principles Applied:
 import rv.rvtypes
 import rv.commands as rvc
 
-try:
-    import rv.qtutils
-    from PySide6.QtWidgets import QDockWidget, QSplitter, QWidget, QVBoxLayout
-    from PySide6.QtCore import Qt, QTimer
-except:
-    try:
-        import rv.qtutils
-        from PySide2.QtWidgets import QDockWidget, QSplitter, QWidget, QVBoxLayout
-        from PySide2.QtCore import Qt, QTimer
-    except:
-        print("Error: PySide2 or PySide6 required for Node Graph Editor")
-        raise
+import rv.qtutils
+from rpa.utils.qt.QtWidgets import QDockWidget, QSplitter, QWidget, QVBoxLayout
+from rpa.utils.qt.QtCore import Qt, QTimer
 
 from node_graph_editor.models import GraphModel, PropertyModel
 from node_graph_editor.views import GraphView, PropertyEditor

@@ -1,4 +1,4 @@
-from PySide2 import QtCore
+from rpa.utils.qt import QtCore
 from annotation.widget.annotation import Annotation as RpaAnnotation
 import annotation.widget.constants as C
 

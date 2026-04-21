@@ -1,4 +1,4 @@
-from PySide2 import QtGui, QtCore, QtWidgets
+from rpa.utils.qt import QtGui, QtCore, QtWidgets
 
 
 class Actions(QtCore.QObject):

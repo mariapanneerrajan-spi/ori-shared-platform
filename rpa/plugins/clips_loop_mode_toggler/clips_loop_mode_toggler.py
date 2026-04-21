@@ -1,5 +1,5 @@
-from PySide2 import QtCore, QtGui
-from PySide2.QtWidgets import QAction
+from rpa.utils.qt import QtCore, QtGui
+from rpa.utils.qt.QtWidgets import QAction
 from rpa.app.widgets.itv_dock_widget import ItvDockWidget
 from rpa_widgets.rpa_interpreter.rpa_interpreter import RpaInterpreter as _RpaInterpreter
 from dataclasses import dataclass, fields

@@ -13,7 +13,7 @@ have only 1 Read-Only Annotation.
 """
 
 try:
-    from PySide2 import QtCore
+    from rpa.utils.qt import QtCore
 except:
     from PySide6 import QtCore
 from rpa.delegate_mngr import DelegateMngr

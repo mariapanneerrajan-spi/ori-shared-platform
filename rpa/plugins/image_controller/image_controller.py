@@ -1,4 +1,4 @@
-from PySide2 import QtCore
+from rpa.utils.qt import QtCore
 from image_controller.widget.image_controller import ImageController as RpaImageController
 
 

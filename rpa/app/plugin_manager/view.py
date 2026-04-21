@@ -1,7 +1,7 @@
 """View elements of the MainDialog are held here."""
 
 from collections import OrderedDict
-from PySide2 import QtWidgets, QtCore, QtGui
+from rpa.utils.qt import QtWidgets, QtCore, QtGui
 
 
 class NoHideTogglableMenu(QtWidgets.QMenu):
@@ -77,7 +77,7 @@ class PluginsTableView(QtWidgets.QTableView):
 
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(
-            lambda pos: self.__context_menu.exec_(self.mapToGlobal(pos))
+            lambda pos: self.__context_menu.exec(self.mapToGlobal(pos))
         )
 
     def __toggle_is_col_copyable_action(self):

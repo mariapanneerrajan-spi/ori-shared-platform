@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtWidgets
+from rpa.utils.qt import QtCore, QtWidgets
 
 
 class AboutDialog(QtWidgets.QDialog):

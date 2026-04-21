@@ -1,5 +1,5 @@
 try:
-    from PySide2 import QtCore
+    from rpa.utils.qt import QtCore
 except:
     from PySide6 import QtCore
 from rv import runtime
@@ -63,9 +63,8 @@ class TimelineApiCore(QtCore.QObject):
         return self.__session.timeline.get_volume()
 
     def set_volume(self, volume):
-        volume = volume / 100.0
-        self.__session.timeline.set_volume(volume)
-        rvc.setFloatProperty("#RVSoundTrack.audio.volume", [volume])
+        self.__session.timeline.set_volume(int(volume))
+        rvc.setFloatProperty("#RVSoundTrack.audio.volume", [volume / 100.0])
         return True
 
     def set_mute(self, state):

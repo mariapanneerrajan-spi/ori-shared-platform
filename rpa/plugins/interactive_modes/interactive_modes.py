@@ -1,4 +1,4 @@
-from PySide2 import QtCore
+from rpa.utils.qt import QtCore
 from interactive_modes.widget.interactive_modes import InteractiveModes as RpaInteractiveModes
 
 

@@ -1,5 +1,5 @@
 try:
-    from PySide2 import QtCore, QtGui, QtWidgets
+    from rpa.utils.qt import QtCore, QtGui, QtWidgets
 except:
     from PySide6 import QtCore, QtGui, QtWidgets
 from app_session_manager.widget.splitter import Splitter
@@ -26,14 +26,17 @@ import uuid
 class PrefKey(Enum):
     PLUGIN = "playlist_manager"
     SPLITTER_STATE = "splitter_state"
+    MAIN_WINDOW_STATE = "main_window_state"
 
 
-class SessionManager:
+class SessionManager(QtCore.QObject):
 
     def __init__(self, rpa, parent_widget):
-        super().__init__()
+        super().__init__(parent_widget)
         self.__playlists_toolbar = PlaylistsToolbar(parent_widget)
+        self.__playlists_toolbar.setObjectName("session_manager_playlists_toolbar")
         self.__clips_toolbar = ClipsToolbar(parent_widget)
+        self.__clips_toolbar.setObjectName("session_manager_clips_toolbar")
         self.__playlists_controller = PlaylistsController(rpa, parent_widget)
         self.__clips_controller = ClipsController(rpa, parent_widget)
 
@@ -109,7 +112,7 @@ class SessionManager:
         # Debounce-save preferences when UI layout changes
         self.__save_prefs_timer = QtCore.QTimer(self.__view)
         self.__save_prefs_timer.setSingleShot(True)
-        self.__save_prefs_timer.setInterval(2000)
+        self.__save_prefs_timer.setInterval(500)
         self.__save_prefs_timer.timeout.connect(self.save_preferences)
         self.__splitter.splitterMoved.connect(self.__schedule_save_preferences)
         header = self.__clips_controller.view.table.horizontalHeader()
@@ -118,6 +121,19 @@ class SessionManager:
         header.sortIndicatorChanged.connect(self.__schedule_save_preferences)
         if hasattr(header, 'SIG_COLUMN_HIDDEN'):
             header.SIG_COLUMN_HIDDEN.connect(self.__schedule_save_preferences)
+
+        self.__playlists_toolbar.topLevelChanged.connect(
+            self.__schedule_save_preferences)
+        self.__clips_toolbar.topLevelChanged.connect(
+            self.__schedule_save_preferences)
+        self.__playlists_toolbar.installEventFilter(self)
+        self.__clips_toolbar.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if obj in (self.__playlists_toolbar, self.__clips_toolbar) \
+        and event.type() == QtCore.QEvent.Move:
+            self.__schedule_save_preferences()
+        return False
 
     @property
     def view(self):
@@ -146,16 +162,28 @@ class SessionManager:
             self.__config_api.value(PrefKey.SPLITTER_STATE.value, None)
         self.__splitter.set_state(splitter_state)
 
+        main_window_state = \
+            self.__config_api.value(PrefKey.MAIN_WINDOW_STATE.value, None)
+        if main_window_state:
+            self.__view.restoreState(main_window_state)
+
         self.__config_api.endGroup()
 
     def __schedule_save_preferences(self, *args):
         self.__save_prefs_timer.start()
+
+    def flush_pending_save(self):
+        if self.__save_prefs_timer.isActive():
+            self.__save_prefs_timer.stop()
+        self.save_preferences()
 
     def save_preferences(self):
         self.__config_api.beginGroup(PrefKey.PLUGIN.value)
 
         self.__config_api.setValue(
             PrefKey.SPLITTER_STATE.value, self.__splitter.saveState())
+        self.__config_api.setValue(
+            PrefKey.MAIN_WINDOW_STATE.value, self.__view.saveState())
         self.__config_api.endGroup()
 
         self.__clips_controller.save_preferences()
@@ -483,7 +511,7 @@ class SessionManager:
                     background_color=background_color
                 )
 
-        if title_media_editor.exec_():
+        if title_media_editor.exec():
             tmp = title_media_editor.get_properties()
         else:
             tmp = {}

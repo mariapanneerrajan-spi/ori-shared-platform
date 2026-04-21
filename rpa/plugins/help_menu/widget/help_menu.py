@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtWidgets, QtGui
+from rpa.utils.qt import QtCore, QtWidgets, QtGui
 from help_menu.widget.about import AboutDialog
 import os
 

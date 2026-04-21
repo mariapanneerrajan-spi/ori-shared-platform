@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtWidgets, QtGui
+from rpa.utils.qt import QtCore, QtWidgets, QtGui
 from background_modes.widget.background_modes \
     import BackgroundModes as RpaBackgroundModes
 from rpa.session_state.annotations import Annotation

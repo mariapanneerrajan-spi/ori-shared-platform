@@ -2,8 +2,8 @@ import math
 import bisect
 import six
 try:
-    from PySide2 import QtCore, QtGui, QtWidgets
-    from PySide2.QtWidgets import QAction, QActionGroup
+    from rpa.utils.qt import QtCore, QtGui, QtWidgets
+    from rpa.utils.qt.QtWidgets import QAction, QActionGroup
 except:
     from PySide6 import QtCore, QtGui, QtWidgets
     from PySide6.QtGui import QAction, QActionGroup

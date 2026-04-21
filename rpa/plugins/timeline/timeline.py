@@ -1,5 +1,5 @@
 import os
-from PySide2 import QtCore
+from rpa.utils.qt import QtCore
 from timeline.widget.timeline import TimelineController
 from dataclasses import dataclass
 from typing import Any

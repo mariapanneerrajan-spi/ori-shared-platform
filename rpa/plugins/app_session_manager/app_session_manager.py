@@ -1,5 +1,5 @@
 import os
-from PySide2 import QtCore, QtGui, QtWidgets
+from rpa.utils.qt import QtCore, QtGui, QtWidgets
 from app_session_manager.widget.session_manager import SessionManager
 from rpa.app.widgets.itv_dock_widget import ItvDockWidget
 from dataclasses import dataclass

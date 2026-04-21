@@ -3,7 +3,7 @@ Controller for Color Picker
 """
 
 try:
-    from PySide2 import QtCore
+    from rpa.utils.qt import QtCore
 except:
     from PySide6 import QtCore
 from annotation.widget.color_picker.model import Rgb

@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtGui, QtWidgets
+from rpa.utils.qt import QtCore, QtGui, QtWidgets
 import transforms.resources.resources
 
 

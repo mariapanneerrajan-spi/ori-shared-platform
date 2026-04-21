@@ -4,7 +4,7 @@ try:
 except ImportError:
     oiio = None
 from dataclasses import dataclass
-from PySide2 import QtCore, QtGui, QtWidgets
+from rpa.utils.qt import QtCore, QtGui, QtWidgets
 from mask.actions import Actions
 
 

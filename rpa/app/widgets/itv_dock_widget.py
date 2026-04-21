@@ -1,4 +1,4 @@
-from PySide2 import QtWidgets
+from rpa.utils.qt import QtWidgets
 
 
 class ItvDockWidget(QtWidgets.QDockWidget):

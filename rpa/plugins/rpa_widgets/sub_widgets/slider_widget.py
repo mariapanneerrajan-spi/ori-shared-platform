@@ -1,7 +1,7 @@
 
 """Module for the slider."""
 try:
-    from PySide2 import QtGui, QtCore, QtWidgets
+    from rpa.utils.qt import QtGui, QtCore, QtWidgets
 except:
     from PySide6 import QtGui, QtCore, QtWidgets
 import itertools, math
@@ -750,4 +750,4 @@ if __name__ == '__main__':
 
     w.show()
     theApp.lastWindowClosed.connect(theApp.quit)
-    theApp.exec_()
+    theApp.exec()

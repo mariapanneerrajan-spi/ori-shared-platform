@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtGui, QtWidgets
+from rpa.utils.qt import QtCore, QtGui, QtWidgets
 from rpa.utils.validators import NumValidator
 
 
@@ -283,7 +283,7 @@ class FrameEditor(QtWidgets.QWidget):
             "original Media Start and Media End frames."
         )
         msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok)
-        msg_box.exec_()
+        msg_box.exec()
 
     def __hold_frames(self):
         clip_id = self.__session_api.get_current_clip()

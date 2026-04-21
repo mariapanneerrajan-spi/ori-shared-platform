@@ -1,5 +1,5 @@
 try:
-    from PySide2 import QtWidgets, QtGui, QtCore
+    from rpa.utils.qt import QtWidgets, QtGui, QtCore
 except:
     from PySide6 import QtWidgets, QtGui, QtCore
 

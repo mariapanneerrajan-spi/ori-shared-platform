@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtGui
+from rpa.utils.qt import QtCore, QtGui
 from app_session_assistant.widget.session_assistant import SessionAssistant
 
 

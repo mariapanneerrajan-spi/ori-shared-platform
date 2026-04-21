@@ -21,14 +21,14 @@ try:
     from PySide6.QtCore import Signal, Qt, QRectF, QPointF, QLineF
     from PySide6.QtGui import QPen, QBrush, QColor, QPainter, QFont, QPainterPath
 except:
-    from PySide2.QtWidgets import (
+    from rpa.utils.qt.QtWidgets import (
         QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsRectItem,
         QGraphicsTextItem, QGraphicsLineItem, QGraphicsEllipseItem, QWidget,
         QGraphicsPathItem, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
         QLabel, QToolBar
     )
-    from PySide2.QtCore import Signal, Qt, QRectF, QPointF, QLineF
-    from PySide2.QtGui import QPen, QBrush, QColor, QPainter, QFont, QPainterPath
+    from rpa.utils.qt.QtCore import Signal, Qt, QRectF, QPointF, QLineF
+    from rpa.utils.qt.QtGui import QPen, QBrush, QColor, QPainter, QFont, QPainterPath
 
 from node_graph_editor.models.graph_model import GraphModel, NodeInfo
 

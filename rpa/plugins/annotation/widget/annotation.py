@@ -1,7 +1,7 @@
 import numpy as np
 import json
 try:
-    from PySide2 import QtCore, QtGui, QtWidgets
+    from rpa.utils.qt import QtCore, QtGui, QtWidgets
 except:
     from PySide6 import QtCore, QtGui, QtWidgets
 from annotation.widget.actions import Actions

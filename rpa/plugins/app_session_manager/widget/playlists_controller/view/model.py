@@ -1,7 +1,7 @@
 import json
 
 try:
-    from PySide2 import QtCore, QtGui
+    from rpa.utils.qt import QtCore, QtGui
 except:
     from PySide6 import QtCore, QtGui
 import app_session_manager.widget.playlists_controller.view.resources.resources

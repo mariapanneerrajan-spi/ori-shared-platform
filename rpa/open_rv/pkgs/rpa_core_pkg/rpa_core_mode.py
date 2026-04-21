@@ -1,7 +1,7 @@
 from rv import rvtypes
 from rpa.open_rv.rpa_core.rpa_core import RpaCore
 try:
-    from PySide2 import QtCore, QtWidgets
+    from rpa.utils.qt import QtCore, QtWidgets
 except:
     from PySide6 import QtCore, QtWidgets
 

@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtGui, QtWidgets
+from rpa.utils.qt import QtCore, QtGui, QtWidgets
 from rpa_widgets.sub_widgets.slider_toolbar import SliderToolBar
 from view_controller.actions import Actions
 import math
@@ -249,13 +249,13 @@ class ViewController(QtCore.QObject):
                 self.__horizontal_lock, self.__vertical_lock)
 
         if event.type() == QtCore.QEvent.MouseButtonPress:
-            if event.button() == QtCore.Qt.MidButton and event.modifiers() == QtCore.Qt.NoModifier:
+            if event.button() == QtCore.Qt.MiddleButton and event.modifiers() == QtCore.Qt.NoModifier:
                 self.__panning_in_progress = True
                 self.__viewport_api.start_drag(get_pos())
         if self.__panning_in_progress and event.type() == QtCore.QEvent.MouseMove:
             self.__viewport_api.drag(get_pos())
         if event.type() == QtCore.QEvent.MouseButtonRelease:
-            if event.button() == QtCore.Qt.MidButton and event.modifiers() == QtCore.Qt.NoModifier:
+            if event.button() == QtCore.Qt.MiddleButton and event.modifiers() == QtCore.Qt.NoModifier:
                 self.__panning_in_progress = False
                 self.__viewport_api.end_drag()
 

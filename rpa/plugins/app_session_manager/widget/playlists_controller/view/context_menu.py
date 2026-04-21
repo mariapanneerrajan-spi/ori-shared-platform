@@ -1,7 +1,7 @@
 import os
 try:
-    from PySide2 import QtCore, QtWidgets
-    from PySide2.QtWidgets import QAction
+    from rpa.utils.qt import QtCore, QtWidgets
+    from rpa.utils.qt.QtWidgets import QAction
 except:
     from PySide6 import QtCore, QtWidgets
     from PySide6.QtGui import QAction
@@ -113,7 +113,7 @@ class ContextMenu(QtWidgets.QMenu):
                         continue
                     self.addMenu(menu)
 
-        self.exec_(pos)
+        self.exec(pos)
 
     def inject_obj(self, obj):
         self.__injected_obj = obj
@@ -149,7 +149,7 @@ class ContextMenu(QtWidgets.QMenu):
         del_action = ActionWithObj("Delete", action, menu)
         del_action.SIG_TRIGGERED.connect(self.__delete_permanently_deleted)
         menu.addAction(del_action)
-        menu.exec_(self.__restore_menu.mapToGlobal(pos))
+        menu.exec(self.__restore_menu.mapToGlobal(pos))
 
     def __delete_permanently_deleted(self, action):
         p_id = action.data()

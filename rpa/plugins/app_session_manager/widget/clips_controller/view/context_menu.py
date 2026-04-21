@@ -1,6 +1,6 @@
 try:
-    from PySide2 import QtCore, QtGui, QtWidgets
-    from PySide2.QtWidgets import QAction
+    from rpa.utils.qt import QtCore, QtGui, QtWidgets
+    from rpa.utils.qt.QtWidgets import QAction
 except:
     from PySide6 import QtCore, QtGui, QtWidgets
     from PySide6.QtGui import QAction
@@ -142,7 +142,7 @@ class ContextMenu(QtWidgets.QMenu):
                     if new_action_id:
                         action_map[new_action_id] = action
 
-        self.exec_(pos)
+        self.exec(pos)
 
     def inject_obj(self, obj):
         self.__injected_obj = obj

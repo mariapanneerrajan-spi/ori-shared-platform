@@ -6,7 +6,7 @@ GUI updates always happen on the main thread even when the originating
 print() or logger call came from a non-GUI thread.
 """
 import logging
-from PySide2 import QtCore
+from rpa.utils.qt import QtCore
 
 
 class LogBridge(QtCore.QObject):

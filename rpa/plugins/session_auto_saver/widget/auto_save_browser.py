@@ -1,9 +1,9 @@
 import os
-from PySide2.QtWidgets import (
+from rpa.utils.qt.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QListWidget, QListWidgetItem,
     QApplication, QDialog
 )
-from PySide2.QtCore import Qt, Signal, QDateTime
+from rpa.utils.qt.QtCore import Qt, Signal, QDateTime
 
 
 class AutoSaveBrowser(QDialog):

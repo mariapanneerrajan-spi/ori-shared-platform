@@ -4,7 +4,7 @@ from OpenGL import GL
 from rv import commands as rvc
 from rv import extra_commands as rve
 try:
-    from PySide2 import QtCore
+    from rpa.utils.qt import QtCore
 except:
     from PySide6 import QtCore
 from rpa.open_rv.rpa_core.api.utils import app_to_rv

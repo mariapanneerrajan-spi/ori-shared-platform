@@ -18,11 +18,11 @@ try:
     )
     from PySide6.QtCore import Signal, Qt
 except:
-    from PySide2.QtWidgets import (
+    from rpa.utils.qt.QtWidgets import (
         QWidget, QHBoxLayout, QVBoxLayout, QLabel, QSpinBox,
         QDoubleSpinBox, QLineEdit, QPushButton, QCheckBox
     )
-    from PySide2.QtCore import Signal, Qt
+    from rpa.utils.qt.QtCore import Signal, Qt
 
 
 class PropertyWidgetBase(QWidget):

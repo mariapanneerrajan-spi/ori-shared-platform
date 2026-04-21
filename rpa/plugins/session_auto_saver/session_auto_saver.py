@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtWidgets, QtGui
+from rpa.utils.qt import QtCore, QtWidgets, QtGui
 import os
 from rpa.app.widgets.itv_dock_widget import ItvDockWidget
 from session_auto_saver.widget.session_auto_saver import SessionAutoSaver as _SessionAutoSaver

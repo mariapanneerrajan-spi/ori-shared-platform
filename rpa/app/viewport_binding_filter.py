@@ -1,5 +1,5 @@
 try:
-    from PySide2 import QtCore
+    from rpa.utils.qt import QtCore
 except Exception:
     from PySide6 import QtCore
 

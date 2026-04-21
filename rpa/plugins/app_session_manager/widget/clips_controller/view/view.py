@@ -1,5 +1,5 @@
 try:
-    from PySide2 import QtCore, QtWidgets, QtGui
+    from rpa.utils.qt import QtCore, QtWidgets, QtGui
 except:
     from PySide6 import QtCore, QtWidgets, QtGui
 from app_session_manager.widget.clips_controller.view.item_delegate \
@@ -63,7 +63,7 @@ class Table(QtWidgets.QTableView):
         if not index.isValid():
             self.SIG_EMPTY_SPACE_CLICKED.emit()
 
-        if event.button() == QtCore.Qt.MidButton:
+        if event.button() == QtCore.Qt.MiddleButton:
             self.setDragEnabled(True)
         super().mousePressEvent(event)
 
@@ -107,7 +107,7 @@ class Table(QtWidgets.QTableView):
         mime_data = self.model().mimeData(self.selectionModel().selectedIndexes())
         drag.setMimeData(mime_data)
         drag.setPixmap(QtGui.QPixmap())
-        drag.exec_(supportedActions)
+        drag.exec(supportedActions)
 
 
 class View(QtWidgets.QWidget):

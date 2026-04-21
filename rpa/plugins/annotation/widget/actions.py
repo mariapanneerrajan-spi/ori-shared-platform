@@ -1,6 +1,6 @@
 try:
-    from PySide2 import QtGui, QtCore
-    from PySide2.QtWidgets import QAction, QActionGroup
+    from rpa.utils.qt import QtGui, QtCore
+    from rpa.utils.qt.QtWidgets import QAction, QActionGroup
 except:
     from PySide6 import QtGui, QtCore
     from PySide6.QtGui import QAction, QActionGroup

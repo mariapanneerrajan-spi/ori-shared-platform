@@ -1,6 +1,6 @@
 from rpa.session_state.session import Session
 try:
-    from PySide2 import QtCore, QtWidgets
+    from rpa.utils.qt import QtCore, QtWidgets
 except:
     from PySide6 import QtCore, QtWidgets
 from rv import commands, runtime, extra_commands

@@ -9,7 +9,7 @@ import html
 import time
 from collections import deque
 
-from PySide2 import QtCore, QtGui, QtWidgets
+from rpa.utils.qt import QtCore, QtGui, QtWidgets
 
 
 # Categories used for filtering — match the (category, level) values

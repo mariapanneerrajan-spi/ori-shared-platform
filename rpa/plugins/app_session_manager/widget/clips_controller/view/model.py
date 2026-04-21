@@ -1,7 +1,7 @@
 import json
 from typing import Union
 try:
-    from PySide2 import QtCore, QtGui
+    from rpa.utils.qt import QtCore, QtGui
 except:
     from PySide6 import QtCore, QtGui
 import app_session_manager.widget.clips_controller.view.resources.resources

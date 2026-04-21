@@ -1,6 +1,6 @@
 import os
-from PySide2 import QtCore, QtGui, QtWidgets
-from PySide2.QtWidgets import QAction
+from rpa.utils.qt import QtCore, QtGui, QtWidgets
+from rpa.utils.qt.QtWidgets import QAction
 from rpa_widgets.session_io.session_io import SessionIO
 
 

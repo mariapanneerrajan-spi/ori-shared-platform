@@ -1,8 +1,8 @@
 from typing import List
 from rpa.utils import utils
 try:
-    from PySide2 import QtCore, QtWidgets
-    from PySide2.QtWidgets import QAction
+    from rpa.utils.qt import QtCore, QtWidgets
+    from rpa.utils.qt.QtWidgets import QAction
 except:
     from PySide6 import QtCore, QtWidgets
     from PySide6.QtGui import QAction

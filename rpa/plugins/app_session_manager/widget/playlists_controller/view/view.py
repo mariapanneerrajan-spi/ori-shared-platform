@@ -1,5 +1,5 @@
 try:
-    from PySide2 import QtCore, QtGui, QtWidgets
+    from rpa.utils.qt import QtCore, QtGui, QtWidgets
 except:
     from PySide6 import QtCore, QtGui, QtWidgets
 from app_session_manager.widget.playlists_controller.view.item_delegate \
@@ -121,7 +121,7 @@ class View(QtWidgets.QListView):
         self.__mime_data_formats = mime_data.formats()
         drag.setMimeData(mime_data)
         drag.setPixmap(QtGui.QPixmap())
-        drag.exec_(supportedActions)
+        drag.exec(supportedActions)
 
     def dragEnterEvent(self, event):
         mime_data = event.mimeData()

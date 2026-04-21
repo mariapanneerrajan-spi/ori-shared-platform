@@ -3,7 +3,7 @@
 from typing import Union
 from enum import Enum, auto
 from dataclasses import dataclass
-from PySide2 import QtCore
+from rpa.utils.qt import QtCore
 
 
 @dataclass

@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtWidgets, QtGui
+from rpa.utils.qt import QtCore, QtWidgets, QtGui
 from rpa.app.widgets.itv_dock_widget import ItvDockWidget
 from help_menu.about import AboutDialog
 import os

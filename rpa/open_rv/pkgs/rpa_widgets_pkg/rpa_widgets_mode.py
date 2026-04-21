@@ -1,8 +1,8 @@
 import os
 try:
-    from PySide2 import QtCore, QtWidgets
-    from PySide2.QtWidgets import QAction
-    from PySide2.QtGui import QKeySequence
+    from rpa.utils.qt import QtCore, QtWidgets
+    from rpa.utils.qt.QtWidgets import QAction
+    from rpa.utils.qt.QtGui import QKeySequence
 except:
     from PySide6 import QtCore, QtWidgets
     from PySide6.QtGui import QAction, QKeySequence

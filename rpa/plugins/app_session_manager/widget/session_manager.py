@@ -1,5 +1,5 @@
 try:
-    from PySide2 import QtCore, QtGui, QtWidgets
+    from rpa.utils.qt import QtCore, QtGui, QtWidgets
 except:
     from PySide6 import QtCore, QtGui, QtWidgets
 from app_session_manager.widget.splitter import Splitter
@@ -511,7 +511,7 @@ class SessionManager(QtCore.QObject):
                     background_color=background_color
                 )
 
-        if title_media_editor.exec_():
+        if title_media_editor.exec():
             tmp = title_media_editor.get_properties()
         else:
             tmp = {}

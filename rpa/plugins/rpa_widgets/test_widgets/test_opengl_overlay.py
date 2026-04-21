@@ -1,9 +1,6 @@
 import sys
 import numpy as np
-try:
-    from PySide2 import QtWidgets, QtGui, QtCore, QtOpenGL
-except:
-    from PySide2 import QtWidgets, QtGui, QtCore, QtOpenGL
+from rpa.utils.qt import QtWidgets, QtGui, QtCore, QtOpenGL
 from OpenGL.GL import *
 
 class HtmlTextureRenderer:
@@ -95,4 +92,4 @@ if __name__ == '__main__':
     win = MainWindow()
     win.setWindowTitle("Render HTML as OpenGL Texture")
     win.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

@@ -171,10 +171,13 @@ class Actions(QtCore.QObject):
         self.toggle_play_backward_action.setChecked(playing and not forward)
 
     def toggle_mute(self, checked, emit_signal=True):
-        self.blockSignals(True)
+        self.mute_checkbox.blockSignals(True)
         self.mute_checkbox.setChecked(checked)
+        self.mute_checkbox.blockSignals(False)
+        self.toggle_mute_action.blockSignals(True)
+        self.toggle_mute_action.setChecked(checked)
+        self.toggle_mute_action.blockSignals(False)
         self.update_volume_button_icon(self.volume_slider.value(), checked)
-        self.blockSignals(False)
         if emit_signal:
             self.SIG_MUTE_TOGGLED.emit(checked)
 
@@ -193,10 +196,11 @@ class Actions(QtCore.QObject):
         self.SIG_AUDIO_SCRUBBING_TOGGLED.emit(state)
 
     def set_volume(self, volume, emit_signal=True):
+        volume = int(volume)
         if self.volume_slider.value() != volume:
-            self.blockSignals(True)
+            self.volume_slider.blockSignals(True)
             self.volume_slider.setValue(volume)
-            self.blockSignals(False)
+            self.volume_slider.blockSignals(False)
         self.update_volume_button_icon(
             volume, self.mute_checkbox.isChecked())
         if emit_signal:

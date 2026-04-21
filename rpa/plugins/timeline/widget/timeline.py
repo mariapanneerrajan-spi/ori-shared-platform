@@ -124,7 +124,14 @@ class TimelineController(QtWidgets.QToolBar):
             self.__post_enable_audio_scrubbing)
 
         self.actions.set_play_status(*self.__timeline_api.get_playing_state())
-        self.actions.volume_slider.setValue(self.__timeline_api.get_volume())
+        self.actions.set_volume(
+            self.__timeline_api.get_volume(), emit_signal=False)
+        self.actions.toggle_mute(
+            self.__timeline_api.is_mute(), emit_signal=False)
+        self.actions.toggle_audio_scrubbing_action.blockSignals(True)
+        self.actions.toggle_audio_scrubbing_action.setChecked(
+            self.__timeline_api.is_audio_scrubbing_enabled())
+        self.actions.toggle_audio_scrubbing_action.blockSignals(False)
 
     def __step_triggered(self, step:int):
         # forward step = 1 and backward step = -1

@@ -279,6 +279,21 @@ class ClipsController(QtCore.QObject):
         self.__session_api.set_active_clips(self.__playlist, ids)
         self.__model.update_background_role()
 
+    def __read_sort_pref(self):
+        raw = self.__config_api.value(PrefKey.HEADER_SORT_BY.value, None)
+        if raw is None:
+            return None, None
+        if isinstance(raw, str):
+            try:
+                parsed = json.loads(raw)
+            except (ValueError, TypeError):
+                return None, None
+        else:
+            parsed = raw
+        if isinstance(parsed, (list, tuple)) and len(parsed) == 2:
+            return parsed[0], parsed[1]
+        return None, None
+
     def load_preferences(self):
         self.__config_api.beginGroup(PrefKey.PLUGIN.value)
         pref_attrs = json.loads(
@@ -286,11 +301,8 @@ class ClipsController(QtCore.QObject):
         if PLAY_ORDER_ID not in pref_attrs:
             pref_attrs.insert(0, PLAY_ORDER_ID)
         self.__header_view_pref_cntrlr.set_attrs(pref_attrs)
-        sort_attr_id_value, order = self.__config_api.value(
-            PrefKey.HEADER_SORT_BY.value, [None, None])
-        if order:
-            order = QtCore.Qt.AscendingOrder if order == PrefKey.ASC.value \
-            else QtCore.Qt.DescendingOrder
+        # JSON round-trip: QSettings INI (Linux) mangles native-list values.
+        sort_attr_id_value, order = self.__read_sort_pref()
         self.__header_view_pref_cntrlr.set_sort_state(sort_attr_id_value, order)
         self.__header_view_pref_cntrlr.set_column_widths(
             json.loads(self.__config_api.value(
@@ -302,11 +314,12 @@ class ClipsController(QtCore.QObject):
         self.__config_api.setValue(
             PrefKey.HEADER_COLUMNS.value,
             json.dumps(self.__header_view_pref_cntrlr.get_attrs()))
-        sort_attr_id, order  = self.__header_view_pref_cntrlr.get_sort_state()
-        order = PrefKey.ASC.value if order == QtCore.Qt.AscendingOrder \
+        sort_attr_id, order = self.__header_view_pref_cntrlr.get_sort_state()
+        order_str = PrefKey.ASC.value if order == QtCore.Qt.AscendingOrder \
             else PrefKey.DESC.value
         self.__config_api.setValue(
-            PrefKey.HEADER_SORT_BY.value, [sort_attr_id, order])
+            PrefKey.HEADER_SORT_BY.value,
+            json.dumps([sort_attr_id, order_str]))
         self.__config_api.setValue(
             PrefKey.HEADER_COLUMN_WIDTHS.value,
             json.dumps(self.__header_view_pref_cntrlr.get_column_widths()))

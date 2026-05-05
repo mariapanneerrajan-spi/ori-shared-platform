@@ -1,0 +1,7 @@
+{
+  "class_name": "AiChat",
+  "app_version": "1.0.0",
+  "author_email": "rpa-app-dev@imageworks.com",
+  "plugin_name": "AI Chat",
+  "description": "Natural-language chat interface that drives RPA via Claude tool-use"
+}

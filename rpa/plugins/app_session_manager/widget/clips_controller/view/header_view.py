@@ -7,6 +7,26 @@ except:
 from app_session_manager.widget.clips_controller.view.model import THUMBNAIL_WIDTH
 
 
+def _to_sort_order(value):
+    """Coerce arbitrary input to a Qt.SortOrder enum.
+
+    QSettings on Linux (INI format) returns values as strings regardless of
+    what was stored, so downstream code must not assume enum identity is
+    preserved across a save/load round-trip.
+    """
+    if isinstance(value, QtCore.Qt.SortOrder):
+        return value
+    if value is None:
+        return QtCore.Qt.AscendingOrder
+    if isinstance(value, str):
+        return QtCore.Qt.DescendingOrder if value.lower().startswith("desc") \
+            else QtCore.Qt.AscendingOrder
+    if isinstance(value, int):
+        return QtCore.Qt.DescendingOrder if value == 1 \
+            else QtCore.Qt.AscendingOrder
+    return QtCore.Qt.AscendingOrder
+
+
 class ActionWithStrData(QAction):
     SIG_TRIGGERED = QtCore.Signal(str)
 
@@ -244,8 +264,11 @@ class HeaderViewPrefCntrlr:
         return [attr_pair[0] for attr_pair in visually_sorted_columns]
 
     def set_sort_state(self, attr, order):
-        if order is None:
-            order = QtCore.Qt.AscendingOrder
+        # Normalize `order` to Qt.SortOrder. PySide2 QSettings on Linux (INI
+        # format) round-trips values through text, so callers may hand us
+        # strings ("asc"/"desc"), ints (0/1), None, or the enum itself.
+        # PySide2's setSortIndicator rejects anything except Qt.SortOrder.
+        order = _to_sort_order(order)
 
         model_attrs = self.__source_model.attrs
         if any([not attr, attr not in model_attrs]):

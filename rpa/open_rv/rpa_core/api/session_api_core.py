@@ -1132,7 +1132,10 @@ class SessionApiCore(QtCore.QObject):
             attr = self.__clip_attr_api.get_attr(attr_id)
             is_value_set = False
             if attr is None:
-                continue
+                # Session-only attr (e.g. "comment") — no OpenRV node-side
+                # handler. Write straight to the RPA session-state clip.
+                if attr_id in self.__session.attrs_metadata.ids:
+                    is_value_set = True
             elif self.__session.attrs_metadata.is_keyable(attr_id):
                 is_value_set = attr._set_value(clip_source_node, value)
             else:
